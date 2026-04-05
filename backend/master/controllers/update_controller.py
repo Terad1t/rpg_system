@@ -1,9 +1,9 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, status, Query, Depends
 from sqlalchemy.orm import Session
-from database.connection import get_db
-from utils.auth_utils import decode_token
-from utils.update_manager import update_manager
-from services.auth_services import get_user_by_id
+from ..database.connection import get_db
+from ..utils.auth_utils import decode_token
+from ..utils.update_manager import update_manager
+from ..services.auth_services import get_user_by_id
 
 router = APIRouter(prefix="/updates", tags=["updates"])
 

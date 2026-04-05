@@ -3,9 +3,9 @@ sys.path.insert(0, '../../')
 
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
-from database.connection import get_db
-from schemas.character_schema import CharacterRead, CharacterUpdateByPlayer
-from player.services.player_character_services import (
+from ...master.database.connection import get_db
+from ...master.schemas.character_schema import CharacterRead, CharacterUpdateByPlayer
+from ..services.player_character_services import (
     get_player_character,
     update_player_character,
     get_all_player_characters,

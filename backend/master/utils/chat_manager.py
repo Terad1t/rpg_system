@@ -1,7 +1,7 @@
 from fastapi import WebSocket
 from typing import Dict, List
 import json
-from schemas.chat_schema import ChatMessageBroadcast
+from ..schemas.chat_schema import ChatMessageBroadcast
 from datetime import datetime
 
 class ConnectionManager:

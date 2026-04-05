@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database.connection import get_db
-from schemas.region_schema import RegionCreate, RegionRead, RegionUpdate
-from services.region_services import (
+from ..database.connection import get_db
+from ..schemas.region_schema import RegionCreate, RegionRead, RegionUpdate
+from ..services.region_services import (
     get_regions,
     get_region_by_id,
     create_region,

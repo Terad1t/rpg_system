@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database.connection import get_db
-from schemas.village_schema import VillageCreate, VillageRead, VillageUpdate
-from services.village_services import (
+from ..database.connection import get_db
+from ..schemas.village_schema import VillageCreate, VillageRead, VillageUpdate
+from ..services.village_services import (
     get_villages,
     get_village_by_id,
     get_villages_by_country,

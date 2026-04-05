@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from models.region_model import Region
-from schemas.region_schema import RegionCreate, RegionUpdate
+from ..models.region_model import Region
+from ..schemas.region_schema import RegionCreate, RegionUpdate
 
 def get_regions(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Region).offset(skip).limit(limit).all()

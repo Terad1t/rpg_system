@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database.connection import get_db
-from schemas.character_schema import CharacterCreateByMaster, CharacterRead, CharacterUpdateByMaster
-from schemas.update_schema import CharacterUpdateEvent
-from utils.update_manager import update_manager
-from services.character_services import (
+from ..database.connection import get_db
+from ..schemas.character_schema import CharacterCreateByMaster, CharacterRead, CharacterUpdateByMaster
+from ..schemas.update_schema import CharacterUpdateEvent
+from ..utils.update_manager import update_manager
+from ..services.character_services import (
     get_characters,
     get_character_by_id,
     create_character,

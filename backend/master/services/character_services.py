@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from models.character_model import Character
-from schemas.character_schema import CharacterCreateByMaster, CharacterUpdateByMaster
+from ..models.character_model import Character
+from ..schemas.character_schema import CharacterCreateByMaster, CharacterUpdateByMaster
 
 def get_characters(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Character).offset(skip).limit(limit).all()

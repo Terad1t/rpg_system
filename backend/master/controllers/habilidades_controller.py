@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database.connection import get_db
-from schemas.habilidades_schema import HabilidadeCreate, HabilidadeRead, HabilidadeUpdate
-from schemas.update_schema import SkillUpdateEvent
-from utils.update_manager import update_manager
-from services.habilidades_services import (
+from ..database.connection import get_db
+from ..schemas.habilidades_schema import HabilidadeCreate, HabilidadeRead, HabilidadeUpdate
+from ..schemas.update_schema import SkillUpdateEvent
+from ..utils.update_manager import update_manager
+from ..services.habilidades_services import (
     get_habilidades,
     get_habilidade_by_id,
     create_habilidade,

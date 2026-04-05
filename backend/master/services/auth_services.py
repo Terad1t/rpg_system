@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from models.user_model import User
-from schemas.auth_schema import UserCreateByMaster, UserUpdateByMaster, LoginRequest
-from utils.auth_utils import (
+from ..models.user_model import User
+from ..schemas.auth_schema import UserCreateByMaster, UserUpdateByMaster, LoginRequest
+from ..utils.auth_utils import (
     hash_password,
     hash_pin,
     verify_password,

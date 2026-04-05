@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from database.connection import get_db
-from schemas.auth_schema import (
+from ..database.connection import get_db
+from ..schemas.auth_schema import (
     LoginRequest,
     TokenResponse,
     UserCreateByMaster,
@@ -9,7 +9,7 @@ from schemas.auth_schema import (
     UserUpdateByMaster,
     MasterInitialization
 )
-from services.auth_services import (
+from ..services.auth_services import (
     login,
     create_user,
     get_all_users,
@@ -20,7 +20,7 @@ from services.auth_services import (
     initialize_master_if_not_exists,
     get_user_by_login,
 )
-from utils.auth_dependencies import get_current_user, get_current_master, CurrentUser
+from ..utils.auth_dependencies import get_current_user, get_current_master, CurrentUser
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -32,8 +32,8 @@ def initialize_master(master_data: MasterInitialization, db: Session = Depends(g
     Inicializa o Master do sistema se nenhum Master existir.
     Essa rota só funciona se o banco estiver vazio de Masters.
     """
-    from services.auth_services import hash_password, hash_pin
-    from models.user_model import User
+    from ..services.auth_services import hash_password, hash_pin
+    from ..models.user_model import User
     
     # Verifica se já existe um Master
     existing_master = db.query(User).filter(User.role == "master").first()

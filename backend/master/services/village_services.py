@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from models.village_model import Village
-from schemas.village_schema import VillageCreate, VillageUpdate
+from ..models.village_model import Village
+from ..schemas.village_schema import VillageCreate, VillageUpdate
 
 def get_villages(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Village).offset(skip).limit(limit).all()

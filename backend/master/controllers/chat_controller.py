@@ -1,11 +1,11 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, status, Query, Depends
 from sqlalchemy.orm import Session
-from database.connection import get_db
-from utils.auth_utils import decode_token
-from utils.chat_manager import chat_manager
-from schemas.chat_schema import ChatMessageBroadcast, ChatHistoryResponse, ChatMessageRead
-from services.chat_services import create_chat_message, get_chat_history, get_recent_messages
-from services.auth_services import get_user_by_id
+from ..database.connection import get_db
+from ..utils.auth_utils import decode_token
+from ..utils.chat_manager import chat_manager
+from ..schemas.chat_schema import ChatMessageBroadcast, ChatHistoryResponse, ChatMessageRead
+from ..services.chat_services import create_chat_message, get_chat_history, get_recent_messages
+from ..services.auth_services import get_user_by_id
 import json
 from datetime import datetime
 
@@ -150,7 +150,7 @@ async def websocket_endpoint(
             
             # Salva no banco de dados
             try:
-                from schemas.chat_schema import ChatMessageCreate
+                from ..schemas.chat_schema import ChatMessageCreate
                 chat_msg_create = ChatMessageCreate(message=message_content)
                 db_message = create_chat_message(db, user_id, username, chat_msg_create)
                 

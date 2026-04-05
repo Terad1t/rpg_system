@@ -1,7 +1,7 @@
 from fastapi import WebSocket
 from typing import Dict, List
 import json
-from schemas.update_schema import UpdateEvent
+from ..schemas.update_schema import UpdateEvent
 
 class UpdateConnectionManager:
     """Gerencia conexões WebSocket para atualizações em tempo real"""

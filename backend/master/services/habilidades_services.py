@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from models.habilidades_model import Habilidade
-from schemas.habilidades_schema import HabilidadeCreate, HabilidadeUpdate
+from ..models.habilidades_model import Habilidade
+from ..schemas.habilidades_schema import HabilidadeCreate, HabilidadeUpdate
 
 def get_habilidades(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Habilidade).offset(skip).limit(limit).all()

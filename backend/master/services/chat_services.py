@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from models.chat_message_model import ChatMessage
-from schemas.chat_schema import ChatMessageCreate
+from ..models.chat_message_model import ChatMessage
+from ..schemas.chat_schema import ChatMessageCreate
 from datetime import datetime
 
 def create_chat_message(db: Session, user_id: int, username: str, message_data: ChatMessageCreate) -> ChatMessage:

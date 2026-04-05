@@ -2,8 +2,8 @@ import sys
 sys.path.insert(0, '../../')
 
 from sqlalchemy.orm import Session
-from models.character_model import Character
-from schemas.character_schema import CharacterUpdateByPlayer
+from ...master.models.character_model import Character
+from ...master.schemas.character_schema import CharacterUpdateByPlayer
 
 def get_player_character(db: Session, character_id: int, user_id: str):
     """Obtém o personagem do player (verifica permissão)"""

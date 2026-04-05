@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from models.country_model import Country
-from schemas.country_schema import CountryCreate, CountryUpdate
+from ..models.country_model import Country
+from ..schemas.country_schema import CountryCreate, CountryUpdate
 
 def get_countries(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Country).offset(skip).limit(limit).all()

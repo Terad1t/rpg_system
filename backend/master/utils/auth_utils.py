@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from typing import Optional
 
-# Configuração de hash de senha
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Configuração de hash de senha usando pbkdf2_sha256 em vez de bcrypt (mais compatível)
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 # Chave secreta para JWT (em produção, usar variável de ambiente)
 SECRET_KEY = os.getenv("SECRET_KEY", "sua-chave-secreta-super-segura-aqui-mude-em-producao")

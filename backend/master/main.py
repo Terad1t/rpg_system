@@ -1,16 +1,16 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from controllers.player_controller import router as player_router
-from controllers.character_controller import router as character_router
-from controllers.habilidades_controller import router as habilidades_router
-from controllers.region_controller import router as region_router
-from controllers.country_controller import router as country_router
-from controllers.village_controller import router as village_router
-from controllers.auth_controller import router as auth_router
-from controllers.chat_controller import router as chat_router
-from controllers.update_controller import router as update_router
-from database.connection import engine, Base, SessionLocal
+from .controllers.player_controller import router as player_router
+from .controllers.character_controller import router as character_router
+from .controllers.habilidades_controller import router as habilidades_router
+from .controllers.region_controller import router as region_router
+from .controllers.country_controller import router as country_router
+from .controllers.village_controller import router as village_router
+from .controllers.auth_controller import router as auth_router
+from .controllers.chat_controller import router as chat_router
+from .controllers.update_controller import router as update_router
+from .database.connection import engine, Base, SessionLocal
 import sys
 import os
 
@@ -18,10 +18,10 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Importa rotas do player
-from player.controllers.player_character_controller import router as player_character_router
+from ..player.controllers.player_character_controller import router as player_character_router
 
 # Importa todos os modelos para criar as tabelas
-from models import (
+from .models import (
     character_model,
     attribute_model,
     raca_model,
@@ -39,7 +39,7 @@ from models import (
     chat_message_model,
 )
 
-from services.auth_services import initialize_master_if_not_exists
+from .services.auth_services import initialize_master_if_not_exists
 
 # Cria as tabelas no banco
 Base.metadata.create_all(bind=engine)

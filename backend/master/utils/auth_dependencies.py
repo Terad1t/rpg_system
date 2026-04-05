@@ -1,9 +1,9 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from database.connection import get_db
-from utils.auth_utils import decode_token
-from services.auth_services import get_user_by_id
+from ..database.connection import get_db
+from .auth_utils import decode_token
+from ..services.auth_services import get_user_by_id
 
 security = HTTPBearer()
 
@@ -13,7 +13,7 @@ class CurrentUser:
     role: str
 
 async def get_current_user(
-    credentials: HTTPAuthCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> CurrentUser:
     """Extrai e valida o usuário a partir do token JWT"""
