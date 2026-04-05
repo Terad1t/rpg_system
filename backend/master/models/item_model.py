@@ -10,6 +10,7 @@ class Item(Base):
     tipo = Column(String, nullable=False)
     image = Column(String)  # caminho da imagem
     description = Column(String)
+    quantidade_maxima = Column(Integer, default=1)  # Máximo que cada player pode ter
 
     # Relacionamentos
     inventario = relationship("Inventario", back_populates="item")
