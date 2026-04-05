@@ -9,6 +9,7 @@ from controllers.country_controller import router as country_router
 from controllers.village_controller import router as village_router
 from controllers.auth_controller import router as auth_router
 from controllers.chat_controller import router as chat_router
+from controllers.update_controller import router as update_router
 from database.connection import engine, Base, SessionLocal
 import sys
 import os
@@ -66,6 +67,9 @@ app.include_router(auth_router)
 
 # ========== Chat Routes ==========
 app.include_router(chat_router)
+
+# ========== Update Routes ==========
+app.include_router(update_router)
 
 # ========== Master Routes ==========
 app.include_router(player_router)

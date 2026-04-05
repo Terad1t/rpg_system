@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database.connection import get_db
 from schemas.character_schema import CharacterCreateByMaster, CharacterRead, CharacterUpdateByMaster
+from schemas.update_schema import CharacterUpdateEvent
+from utils.update_manager import update_manager
 from services.character_services import (
     get_characters,
     get_character_by_id,
@@ -27,22 +29,54 @@ def read_character(character_id: int, db: Session = Depends(get_db)):
     return db_character
 
 @router.post("/", response_model=CharacterRead)
-def create_new_character(character: CharacterCreateByMaster, db: Session = Depends(get_db)):
+async def create_new_character(character: CharacterCreateByMaster, db: Session = Depends(get_db)):
     """Cria um novo personagem (Master only)"""
-    return create_character(db=db, character=character)
+    db_character = create_character(db=db, character=character)
+    
+    # Emite evento em tempo real
+    event = CharacterUpdateEvent(
+        data={
+            "action": "created",
+            "character": db_character.model_dump()
+        }
+    )
+    await update_manager.broadcast(event)
+    
+    return db_character
 
 @router.put("/{character_id}", response_model=CharacterRead)
-def update_existing_character(character_id: int, character: CharacterUpdateByMaster, db: Session = Depends(get_db)):
+async def update_existing_character(character_id: int, character: CharacterUpdateByMaster, db: Session = Depends(get_db)):
     """Atualiza um personagem (Master only)"""
     db_character = update_character(db, character_id=character_id, character_update=character)
     if db_character is None:
         raise HTTPException(status_code=404, detail="Character not found")
+    
+    # Emite evento em tempo real
+    event = CharacterUpdateEvent(
+        data={
+            "action": "updated",
+            "character_id": character_id,
+            "character": db_character.model_dump()
+        }
+    )
+    await update_manager.broadcast(event)
+    
     return db_character
 
 @router.delete("/{character_id}")
-def delete_existing_character(character_id: int, db: Session = Depends(get_db)):
+async def delete_existing_character(character_id: int, db: Session = Depends(get_db)):
     """Deleta um personagem (Master only)"""
     db_character = delete_character(db, character_id=character_id)
     if db_character is None:
         raise HTTPException(status_code=404, detail="Character not found")
+    
+    # Emite evento em tempo real
+    event = CharacterUpdateEvent(
+        data={
+            "action": "deleted",
+            "character_id": character_id
+        }
+    )
+    await update_manager.broadcast(event)
+    
     return {"message": "Character deleted successfully"}

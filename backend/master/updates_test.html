@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPG System - Real-Time Updates Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #messages {
+            border: 1px solid #ccc;
+            height: 400px;
+            overflow-y: scroll;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        #token {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .event {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-left: 4px solid #007bff;
+            background-color: #f8f9fa;
+        }
+        .event-type {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>RPG System - Real-Time Updates Test</h1>
+
+    <div>
+        <label for="token">JWT Token:</label><br>
+        <input type="text" id="token" placeholder="Enter your JWT token here"><br><br>
+
+        <button id="connectBtn">Connect to Updates</button>
+        <button id="disconnectBtn" disabled>Disconnect</button>
+    </div>
+
+    <h2>Real-Time Events</h2>
+    <div id="messages"></div>
+
+    <script>
+        let socket = null;
+        const messagesDiv = document.getElementById('messages');
+        const tokenInput = document.getElementById('token');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+
+        function addMessage(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = 'event';
+            div.innerHTML = `
+                <div class="event-type">${type.toUpperCase()}</div>
+                <div class="timestamp">${new Date().toLocaleString()}</div>
+                <pre>${JSON.stringify(message, null, 2)}</pre>
+            `;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        connectBtn.addEventListener('click', () => {
+            const token = tokenInput.value.trim();
+            if (!token) {
+                alert('Please enter a JWT token');
+                return;
+            }
+
+            // Connect to WebSocket
+            socket = new WebSocket(`ws://localhost:8000/updates/ws?token=${encodeURIComponent(token)}`);
+
+            socket.onopen = () => {
+                addMessage({ status: 'Connected to real-time updates' }, 'success');
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            };
+
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    addMessage(data, data.type || 'event');
+                } catch (e) {
+                    addMessage({ error: 'Failed to parse message', raw: event.data }, 'error');
+                }
+            };
+
+            socket.onclose = (event) => {
+                addMessage({ status: 'Disconnected from updates', code: event.code, reason: event.reason }, 'warning');
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            };
+
+            socket.onerror = (error) => {
+                addMessage({ error: 'WebSocket error', details: error }, 'error');
+            };
+        });
+
+        disconnectBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.close();
+            }
+        });
+
+        // Load token from localStorage if available
+        const savedToken = localStorage.getItem('rpg_token');
+        if (savedToken) {
+            tokenInput.value = savedToken;
+        }
+
+        // Save token to localStorage when changed
+        tokenInput.addEventListener('input', () => {
+            localStorage.setItem('rpg_token', tokenInput.value);
+        });
+    </script>
+</body>
+</html>
