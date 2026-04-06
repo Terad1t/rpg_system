@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from ..database.connection import get_db
 from ..utils.auth_utils import decode_token
 from ..utils.chat_manager import chat_manager
+from ..utils.auth_dependencies import get_current_player, CurrentUser
 from ..schemas.chat_schema import ChatMessageBroadcast, ChatHistoryResponse, ChatMessageRead
 from ..services.chat_services import create_chat_message, get_chat_history, get_recent_messages
 from ..services.auth_services import get_user_by_id
@@ -17,11 +18,12 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 def get_chat_history_endpoint(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    current_player: CurrentUser = Depends(get_current_player),
     db: Session = Depends(get_db)
 ):
     """
     Obtém o histórico de mensagens do chat.
-    Qualquer pessoa autenticada pode ver o histórico (para implementação futura).
+    Apenas players autenticados podem acessar o histórico.
     """
     messages, total = get_chat_history(db, limit=limit, offset=offset)
     

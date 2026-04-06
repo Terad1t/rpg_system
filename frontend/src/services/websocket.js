@@ -5,7 +5,7 @@ class WebSocketService {
     this.listeners = {}
   }
 
-  connect(token, path = '/ws/chat') {
+  connect(token, path = '/chat/ws') {
     return new Promise((resolve, reject) => {
       try {
         this.ws = new WebSocket(`${this.url}${path}?token=${token}`)
