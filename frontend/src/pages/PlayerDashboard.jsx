@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import api from '../services/api'
 import { Button, Card, StatBar } from '../components/common'
 import PlayerCharacter from '../components/player/PlayerCharacter'
+import PlayerCharacterEditor from '../components/player/PlayerCharacterEditor'
 import PlayerInventory from '../components/player/PlayerInventory'
 import PlayerSkills from '../components/player/PlayerSkills'
 import PlayerChat from '../components/player/PlayerChat'
@@ -19,34 +21,44 @@ export default function PlayerDashboard() {
   const [activeTab, setActiveTab] = useState(TABS.CHARACTER)
   const [characterData, setCharacterData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    // Aqui você carregaria os dados do personagem da API
-    // Por enquanto, vamos usar dados mock
-    setTimeout(() => {
-      setCharacterData({
-        id: 1,
-        name: 'Aragorn',
-        race: 'Humano',
-        class: 'Guerreiro',
-        level: 25,
-        hp: 150,
-        maxHp: 200,
-        vigor: 80,
-        maxVigor: 100,
-        attributes: {
-          strength: 18,
-          dexterity: 14,
-          constitution: 16,
-          intelligence: 12,
-          wisdom: 13,
-          charisma: 15,
-        },
-        xp: 7500,
-        maxXp: 10000,
-      })
-      setLoading(false)
-    }, 500)
+    const loadCharacter = async () => {
+      try {
+        const response = await api.get('/my-characters/')
+        const characters = response.data || []
+
+        if (characters.length > 0) {
+          const raw = characters[0]
+          setCharacterData({
+            id: raw.id,
+            name: raw.name,
+            race: raw.race || raw.raca_name || 'Desconhecida',
+            class: raw.class || raw.classe_name || 'Desconhecida',
+            level: raw.level ?? 1,
+            hp: raw.hp ?? 0,
+            maxHp: raw.maxHp ?? raw.hp ?? 0,
+            vigor: raw.vigor ?? 0,
+            maxVigor: raw.maxVigor ?? raw.vigor ?? 0,
+            xp: raw.xp ?? 0,
+            maxXp: raw.maxXp ?? 0,
+            codename: raw.codename,
+            description: raw.description,
+            attributes: raw.attributes || {},
+          })
+        } else {
+          setError('Nenhum personagem encontrado para este jogador.')
+        }
+      } catch (err) {
+        console.error('Erro ao carregar personagem:', err)
+        setError('Não foi possível carregar os dados do personagem.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadCharacter()
   }, [])
 
   if (loading) {
@@ -80,8 +92,29 @@ export default function PlayerDashboard() {
 
         {/* Content */}
         <div className="p-6">
-          {activeTab === TABS.CHARACTER && characterData && (
-            <PlayerCharacter character={characterData} />
+          {activeTab === TABS.CHARACTER && (
+            <>
+              {error && (
+                <Card className="p-6 mb-6 bg-red-500/10 border border-red-500 text-red-200">
+                  <p>{error}</p>
+                </Card>
+              )}
+              {characterData ? (
+                <>
+                  <PlayerCharacter character={characterData} />
+                  <div className="mt-6">
+                    <PlayerCharacterEditor
+                      character={characterData}
+                      onUpdate={(updated) => setCharacterData((prev) => ({ ...prev, ...updated }))}
+                    />
+                  </div>
+                </>
+              ) : !error ? (
+                <Card className="p-6 bg-dark-secondary border border-dark-border text-secondary">
+                  <p>Nenhum personagem disponível.</p>
+                </Card>
+              ) : null}
+            </>
           )}
           {activeTab === TABS.INVENTORY && <PlayerInventory />}
           {activeTab === TABS.SKILLS && <PlayerSkills />}
