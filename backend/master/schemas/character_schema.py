@@ -1,34 +1,83 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional
 
 # ========== SCHEMAS DO MASTER ==========
 
+_TIPOS = {"player", "npc", "boss"}
+
+
 class CharacterCreateByMaster(BaseModel):
     """Criação de personagem pelo Master (completo)"""
-    name: str  # Imutável
-    age: Optional[int] = None  # Imutável
-    tipo: str  # player, npc, boss
-    raca_id: int  # Imutável
-    classe_id: int  # Imutável
-    user_id: Optional[str] = None  # Para personagens de player
+    name: str = Field(..., min_length=1)
+    age: Optional[int] = None
+    tipo: str = Field(...)
+    raca_id: int = Field(..., ge=1)
+    classe_id: int = Field(..., ge=1)
+    user_id: Optional[int] = None
+
+    @field_validator("tipo")
+    def normalize_tipo(cls, v):
+        if v is None:
+            raise ValueError("tipo is required and must be one of: player, npc, boss")
+        val = str(v).strip().lower()
+        if val not in _TIPOS:
+            raise ValueError(f"invalid tipo '{v}', expected one of: {_TIPOS}")
+        return val
+
+    @field_validator("age")
+    def validate_age(cls, v):
+        if v is None:
+            return v
+        if v < 0:
+            raise ValueError("age must be >= 0")
+        return v
+
+    @model_validator(mode="after")
+    def check_player_has_user(cls):
+        # If this character is a player, user_id must be provided
+        if getattr(cls, "tipo", None) == "player" and getattr(cls, "user_id", None) is None:
+            raise ValueError("user_id is required when tipo == 'player'")
+        return cls
+
 
 class CharacterUpdateByMaster(BaseModel):
     """Atualização pelo Master (permite alterar quase tudo)"""
-    name: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1)
     age: Optional[int] = None
     tipo: Optional[str] = None
     raca_id: Optional[int] = None
     classe_id: Optional[int] = None
-    user_id: Optional[str] = None
+    user_id: Optional[int] = None
+
+    @field_validator("tipo")
+    def normalize_tipo_opt(cls, v):
+        if v is None:
+            return v
+        val = str(v).strip().lower()
+        if val not in _TIPOS:
+            raise ValueError(f"invalid tipo '{v}', expected one of: {_TIPOS}")
+        return val
+
+    @field_validator("age")
+    def validate_age_opt(cls, v):
+        if v is None:
+            return v
+        if v < 0:
+            raise ValueError("age must be >= 0")
+        return v
+
 
 # ========== SCHEMAS DO PLAYER ==========
 
+
 class CharacterUpdateByPlayer(BaseModel):
     """Atualização pelo Player (apenas codinome e descrição)"""
-    codename: Optional[str] = None  # Editável
-    description: Optional[str] = None  # Editável
+    codename: Optional[str] = Field(None, min_length=1, max_length=50)
+    description: Optional[str] = Field(None, max_length=2000)
+
 
 # ========== SCHEMAS DE LEITURA ==========
+
 
 class CharacterRead(BaseModel):
     id: int
@@ -39,7 +88,7 @@ class CharacterRead(BaseModel):
     classe_id: int
     codename: Optional[str] = None
     description: Optional[str] = None
-    user_id: Optional[str] = None
+    user_id: Optional[int] = None
 
     class Config:
         from_attributes = True

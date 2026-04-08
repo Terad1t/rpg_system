@@ -1,10 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
 
 class PlayerNoteCreate(BaseModel):
-    content: str
+    content: str = Field(..., min_length=1, max_length=5000)
 
 
 class PlayerNoteRead(BaseModel):

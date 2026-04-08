@@ -19,7 +19,10 @@ class Character(Base):
     description = Column(String)  # Descrição/lore do personagem (editável)
     
     # Relacionamento com usuário (opcional, para players)
-    user_id = Column(String)  # ID do usuário que controla esse personagem (se for player)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    # Relationship to User
+    user = relationship("User")
 
     # Relacionamentos
     raca = relationship("Raca", back_populates="characters")

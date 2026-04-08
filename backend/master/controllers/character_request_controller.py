@@ -15,7 +15,9 @@ from ..services.character_request_services import (
 from ..models.character_request_model import CharacterRequest
 from ..utils.auth_dependencies import get_current_player, get_current_master, get_current_user
 from ..schemas.update_schema import CharacterUpdateEvent
-from ..utils.update_manager import update_manager
+from ..utils.broadcast import broadcast_manager
+from ..models.raca_model import Raca
+from ..models.classe_model import Classe
 
 router = APIRouter(prefix="/characters/requests", tags=["character-requests"])
 
@@ -23,6 +25,14 @@ router = APIRouter(prefix="/characters/requests", tags=["character-requests"])
 @router.post("/", response_model=CharacterRequestRead)
 def create_request(payload: CharacterRequestCreate, current_player = Depends(get_current_player), db: Session = Depends(get_db)):
     user_id = int(current_player.user_id)
+    # referential checks
+    raca = db.query(Raca).filter(Raca.id == payload.raca_id).first()
+    if not raca:
+        raise HTTPException(status_code=404, detail="Race (raca) not found")
+    classe = db.query(Classe).filter(Classe.id == payload.classe_id).first()
+    if not classe:
+        raise HTTPException(status_code=404, detail="Class (classe) not found")
+
     req = create_character_request(db, user_id=user_id, payload=payload.model_dump())
     return req
 
@@ -47,5 +57,5 @@ async def approve(request_id: int, approval: CharacterApproval, db: Session = De
         raise HTTPException(status_code=404, detail="Request not found or invalid")
 
     event = CharacterUpdateEvent(data={"action": "created", "character_id": character.id})
-    await update_manager.broadcast(event)
+    await broadcast_manager.broadcast(event)
     return character

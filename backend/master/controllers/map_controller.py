@@ -10,7 +10,7 @@ from ..services.map_services import (
     delete_map,
 )
 from ..schemas.update_schema import ItemUpdateEvent
-from ..utils.update_manager import update_manager
+from ..utils.broadcast import broadcast_manager
 
 router = APIRouter(prefix="/maps", tags=["maps"])
 
@@ -33,7 +33,7 @@ async def create_new_map(map_in: MapCreate, db: Session = Depends(get_db)):
     db_map = create_map(db=db, map_in=map_in)
     # broadcast
     event = ItemUpdateEvent(data={"action": "created", "map": db_map.__dict__})
-    await update_manager.broadcast(event)
+    await broadcast_manager.broadcast(event)
     return db_map
 
 
@@ -43,7 +43,7 @@ async def update_existing_map(map_id: int, map_update: MapUpdate, db: Session = 
     if db_map is None:
         raise HTTPException(status_code=404, detail="Map not found")
     event = ItemUpdateEvent(data={"action": "updated", "map_id": map_id})
-    await update_manager.broadcast(event)
+    await broadcast_manager.broadcast(event)
     return db_map
 
 
@@ -53,5 +53,5 @@ async def delete_existing_map(map_id: int, db: Session = Depends(get_db)):
     if db_map is None:
         raise HTTPException(status_code=404, detail="Map not found")
     event = ItemUpdateEvent(data={"action": "deleted", "map_id": map_id})
-    await update_manager.broadcast(event)
+    await broadcast_manager.broadcast(event)
     return {"message": "Map deleted successfully"}

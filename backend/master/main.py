@@ -11,6 +11,7 @@ from .controllers.map_controller import router as map_router
 from .controllers.character_request_controller import router as character_request_router
 from .controllers.player_notes_controller import router as player_notes_router
 from .controllers.character_habilidade_controller import router as character_habilidade_router
+from .controllers.inventario_controller import router as inventario_router
 from .controllers.auth_controller import router as auth_router
 from .controllers.chat_controller import router as chat_router
 from .controllers.update_controller import router as update_router
@@ -41,6 +42,7 @@ from .models import (
     village_model,
     user_model,
     chat_message_model,
+    inventory_log_model,
     map_model,
     character_request_model,
     player_notes_model,
@@ -49,8 +51,12 @@ from .models import (
 
 from .services.auth_services import initialize_master_if_not_exists
 
-# Cria as tabelas no banco
-Base.metadata.create_all(bind=engine)
+# Prefer migrations: only create tables automatically if no alembic_version table exists
+from sqlalchemy import inspect
+inspector = inspect(engine)
+if not inspector.has_table("alembic_version"):
+    # Fallback for first-time setup or when migrations are not being used
+    Base.metadata.create_all(bind=engine)
 
 # Inicializa o Master se não existir
 db = SessionLocal()
@@ -90,6 +96,7 @@ app.include_router(map_router)
 app.include_router(character_request_router)
 app.include_router(player_notes_router)
 app.include_router(character_habilidade_router)
+app.include_router(inventario_router)
 
 # ========== Player Routes ==========
 app.include_router(player_character_router)

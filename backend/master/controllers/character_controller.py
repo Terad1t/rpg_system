@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from ..database.connection import get_db
 from ..schemas.character_schema import CharacterCreateByMaster, CharacterRead, CharacterUpdateByMaster
 from ..schemas.update_schema import CharacterUpdateEvent
-from ..utils.update_manager import update_manager
+from ..utils.broadcast import broadcast_manager
 from ..services.character_services import (
     get_characters,
     get_character_by_id,
@@ -11,6 +11,9 @@ from ..services.character_services import (
     update_character,
     delete_character,
 )
+from ..models.raca_model import Raca
+from ..models.classe_model import Classe
+from ..models.user_model import User
 
 router = APIRouter(prefix="/characters", tags=["master - characters"])
 
@@ -31,6 +34,18 @@ def read_character(character_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=CharacterRead)
 async def create_new_character(character: CharacterCreateByMaster, db: Session = Depends(get_db)):
     """Cria um novo personagem (Master only)"""
+    # Referential checks before creation
+    raca = db.query(Raca).filter(Raca.id == character.raca_id).first()
+    if not raca:
+        raise HTTPException(status_code=404, detail="Race (raca) not found")
+    classe = db.query(Classe).filter(Classe.id == character.classe_id).first()
+    if not classe:
+        raise HTTPException(status_code=404, detail="Class (classe) not found")
+    if character.user_id:
+        user = db.query(User).filter(User.id == character.user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
     db_character = create_character(db=db, character=character)
     
     # Emite evento em tempo real
@@ -40,7 +55,7 @@ async def create_new_character(character: CharacterCreateByMaster, db: Session =
             "character": db_character.model_dump()
         }
     )
-    await update_manager.broadcast(event)
+    await broadcast_manager.broadcast(event)
     
     return db_character
 
@@ -59,7 +74,7 @@ async def update_existing_character(character_id: int, character: CharacterUpdat
             "character": db_character.model_dump()
         }
     )
-    await update_manager.broadcast(event)
+    await broadcast_manager.broadcast(event)
     
     return db_character
 
@@ -77,6 +92,6 @@ async def delete_existing_character(character_id: int, db: Session = Depends(get
             "character_id": character_id
         }
     )
-    await update_manager.broadcast(event)
+    await broadcast_manager.broadcast(event)
     
     return {"message": "Character deleted successfully"}

@@ -5,9 +5,9 @@ from datetime import datetime
 # ========== SCHEMAS DE LOGIN ==========
 
 class LoginRequest(BaseModel):
-    login: str
-    password: str
-    pin: str
+    login: str = Field(..., min_length=3)
+    password: str = Field(..., min_length=6)
+    pin: str = Field(..., min_length=4, max_length=6)
 
 class TokenResponse(BaseModel):
     access_token: str

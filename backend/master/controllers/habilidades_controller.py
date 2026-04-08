@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from ..database.connection import get_db
 from ..schemas.habilidades_schema import HabilidadeCreate, HabilidadeRead, HabilidadeUpdate
 from ..schemas.update_schema import SkillUpdateEvent
-from ..utils.update_manager import update_manager
+from ..utils.broadcast import broadcast_manager
 from ..services.habilidades_services import (
     get_habilidades,
     get_habilidade_by_id,
@@ -37,7 +37,7 @@ async def create_new_habilidade(habilidade: HabilidadeCreate, db: Session = Depe
             "habilidade": db_habilidade.model_dump()
         }
     )
-    await update_manager.broadcast(event)
+    await broadcast_manager.broadcast(event)
     
     return db_habilidade
 
@@ -55,7 +55,7 @@ async def update_existing_habilidade(habilidade_id: int, habilidade: HabilidadeU
             "habilidade": db_habilidade.model_dump()
         }
     )
-    await update_manager.broadcast(event)
+    await broadcast_manager.broadcast(event)
     
     return db_habilidade
 
@@ -72,6 +72,6 @@ async def delete_existing_habilidade(habilidade_id: int, db: Session = Depends(g
             "habilidade_id": habilidade_id
         }
     )
-    await update_manager.broadcast(event)
+    await broadcast_manager.broadcast(event)
     
     return {"message": "Habilidade deleted successfully"}

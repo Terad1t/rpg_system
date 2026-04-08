@@ -2,7 +2,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, st
 from sqlalchemy.orm import Session
 from ..database.connection import get_db
 from ..utils.auth_utils import decode_token
-from ..utils.update_manager import update_manager
+from ..utils.broadcast import broadcast_manager
 from ..services.auth_services import get_user_by_id
 
 router = APIRouter(prefix="/updates", tags=["updates"])
@@ -54,7 +54,7 @@ async def websocket_updates_endpoint(
 
     username = user.login  # Usa o login como username
 
-    await update_manager.connect(websocket, user_id, username)
+    await broadcast_manager.connect(websocket, user_id, username)
 
     try:
         # Mantém a conexão aberta para receber atualizações
@@ -65,7 +65,7 @@ async def websocket_updates_endpoint(
             # Por enquanto, apenas mantém a conexão
 
     except WebSocketDisconnect:
-        update_manager.disconnect(user_id)
+        broadcast_manager.disconnect(user_id)
 
 # ========== ENDPOINT PARA VER USUÁRIOS CONECTADOS ==========
 
@@ -73,6 +73,6 @@ async def websocket_updates_endpoint(
 def get_active_update_users():
     """Retorna lista de usuários conectados para receber atualizações em tempo real"""
     return {
-        "active_users": update_manager.get_active_users(),
-        "total": update_manager.get_active_users_count()
+        "active_users": broadcast_manager.get_active_users(),
+        "total": broadcast_manager.get_active_users_count()
     }

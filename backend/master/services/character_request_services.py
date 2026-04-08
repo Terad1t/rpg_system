@@ -3,6 +3,8 @@ from ..models.character_request_model import CharacterRequest
 from ..models.character_model import Character
 from ..models.attribute_model import Attribute
 from ..models.raca_bonus_model import RacaBonus
+from ..models.raca_model import Raca
+from ..models.classe_model import Classe
 from datetime import datetime
 from typing import Dict
 
@@ -37,6 +39,14 @@ def get_request_by_id(db: Session, request_id: int):
 def approve_request(db: Session, request_id: int, approval_data: Dict, master_user_id: int):
     req = db.query(CharacterRequest).filter(CharacterRequest.id == request_id).first()
     if not req or req.status != "pending":
+        return None
+
+    # ensure referenced race and class exist
+    raca = db.query(Raca).filter(Raca.id == req.raca_id).first()
+    if not raca:
+        return None
+    classe = db.query(Classe).filter(Classe.id == req.classe_id).first()
+    if not classe:
         return None
 
     # Create Character

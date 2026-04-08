@@ -19,6 +19,7 @@ dependencies = [
     "python-multipart>=0.0.5",
     "requests>=2.33.1",
     "websockets>=16.0",
+    "alembic>=1.11.1",
 ]
 
 [project.optional-dependencies]

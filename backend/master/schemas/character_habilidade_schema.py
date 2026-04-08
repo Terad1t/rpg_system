@@ -1,10 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
 
 class CharacterHabilidadeCreate(BaseModel):
-    habilidade_id: int
+    habilidade_id: int = Field(..., ge=1)
 
 
 class CharacterHabilidadeRead(BaseModel):
