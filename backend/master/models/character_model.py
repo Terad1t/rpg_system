@@ -12,6 +12,7 @@ class Character(Base):
     tipo = Column(String, nullable=False)  # player, npc, boss
     raca_id = Column(Integer, ForeignKey("racas.id"), nullable=False)
     classe_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
+    subclass = Column(String, nullable=True)  # Subclasse definida pelo Master
     
     # Dados editáveis pelo player (se for player)
     codename = Column(String)  # Codinome do personagem (editável)
@@ -26,3 +27,4 @@ class Character(Base):
     attributes = relationship("Attribute", back_populates="character")
     inventario = relationship("Inventario", back_populates="character")
     batalha_participantes = relationship("BatalhaParticipante", back_populates="character")
+    habilidades_assigned = relationship("CharacterHabilidade", back_populates="character")

@@ -13,3 +13,5 @@ class Raca(Base):
     characters = relationship("Character", back_populates="raca")
     raca_bonus = relationship("RacaBonus", back_populates="raca")
     habilidades = relationship("Habilidade", back_populates="raca")
+    # Maps relation (many-to-many via maps_racas)
+    maps = relationship("Map", secondary="maps_racas", back_populates="racas")

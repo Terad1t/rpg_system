@@ -7,6 +7,10 @@ from .controllers.habilidades_controller import router as habilidades_router
 from .controllers.region_controller import router as region_router
 from .controllers.country_controller import router as country_router
 from .controllers.village_controller import router as village_router
+from .controllers.map_controller import router as map_router
+from .controllers.character_request_controller import router as character_request_router
+from .controllers.player_notes_controller import router as player_notes_router
+from .controllers.character_habilidade_controller import router as character_habilidade_router
 from .controllers.auth_controller import router as auth_router
 from .controllers.chat_controller import router as chat_router
 from .controllers.update_controller import router as update_router
@@ -37,6 +41,10 @@ from .models import (
     village_model,
     user_model,
     chat_message_model,
+    map_model,
+    character_request_model,
+    player_notes_model,
+    character_habilidade_model,
 )
 
 from .services.auth_services import initialize_master_if_not_exists
@@ -78,6 +86,10 @@ app.include_router(habilidades_router)
 app.include_router(region_router)
 app.include_router(country_router)
 app.include_router(village_router)
+app.include_router(map_router)
+app.include_router(character_request_router)
+app.include_router(player_notes_router)
+app.include_router(character_habilidade_router)
 
 # ========== Player Routes ==========
 app.include_router(player_character_router)
