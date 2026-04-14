@@ -33,11 +33,11 @@ class CharacterCreateByMaster(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def check_player_has_user(cls):
+    def check_player_has_user(self):
         # If this character is a player, user_id must be provided
-        if getattr(cls, "tipo", None) == "player" and getattr(cls, "user_id", None) is None:
+        if self.tipo == "player" and self.user_id is None:
             raise ValueError("user_id is required when tipo == 'player'")
-        return cls
+        return self
 
 
 class CharacterUpdateByMaster(BaseModel):

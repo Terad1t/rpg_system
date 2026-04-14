@@ -9,6 +9,10 @@ from .controllers.country_controller import router as country_router
 from .controllers.village_controller import router as village_router
 from .controllers.map_controller import router as map_router
 from .controllers.character_request_controller import router as character_request_router
+from .controllers.item_controller import router as item_router
+from .controllers.websocket_controller import router as websocket_router
+from .controllers.raca_controller import router as raca_router
+from .controllers.classe_controller import router as classe_router
 from .controllers.player_notes_controller import router as player_notes_router
 from .controllers.character_habilidade_controller import router as character_habilidade_router
 from .controllers.inventario_controller import router as inventario_router
@@ -77,26 +81,32 @@ app.add_middleware(
 )
 
 # ========== Authentication Routes ==========
-app.include_router(auth_router)
+app.include_router(auth_router, prefix="/api")
 
 # ========== Chat Routes ==========
-app.include_router(chat_router)
+app.include_router(chat_router, prefix="/api")
 
 # ========== Update Routes ==========
-app.include_router(update_router)
+app.include_router(update_router, prefix="/api")
 
 # ========== Master Routes ==========
-app.include_router(player_router)
-app.include_router(character_router)
-app.include_router(habilidades_router)
-app.include_router(region_router)
-app.include_router(country_router)
-app.include_router(village_router)
-app.include_router(map_router)
-app.include_router(character_request_router)
-app.include_router(player_notes_router)
-app.include_router(character_habilidade_router)
-app.include_router(inventario_router)
+app.include_router(player_router, prefix="/api")
+app.include_router(character_router, prefix="/api")
+app.include_router(habilidades_router, prefix="/api")
+app.include_router(region_router, prefix="/api")
+app.include_router(country_router, prefix="/api")
+app.include_router(village_router, prefix="/api")
+app.include_router(map_router, prefix="/api")
+app.include_router(character_request_router, prefix="/api")
+app.include_router(item_router, prefix="/api")
+app.include_router(raca_router, prefix="/api")
+app.include_router(classe_router, prefix="/api")
+app.include_router(player_notes_router, prefix="/api")
+app.include_router(character_habilidade_router, prefix="/api")
+app.include_router(inventario_router, prefix="/api")
+
+# ========== WebSocket Routes ==========
+app.include_router(websocket_router)
 
 # ========== Player Routes ==========
-app.include_router(player_character_router)
+app.include_router(player_character_router, prefix="/api")

@@ -66,7 +66,7 @@ class ConnectionManager:
             username="System",
             message=content,
             created_at=datetime.utcnow().isoformat(),
-            message_type="system"
+            message_type="user_joined"
         )
         await self.broadcast(message)
     

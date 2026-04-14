@@ -19,10 +19,10 @@ class UpdateEvent(BaseModel):
         return val
 
     @model_validator(mode="after")
-    def ensure_timestamp(cls):
-        if getattr(cls, "timestamp", None) is None:
-            cls.timestamp = datetime.utcnow().isoformat()
-        return cls
+    def ensure_timestamp(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.utcnow()
+        return self
 
 
 # Tipos específicos de eventos

@@ -72,7 +72,7 @@ def main():
         print("\n--- Novo Player ---")
         login = input("Nome de usuário: ").strip()
         if not login:
-            print("❌ Nome de usuário não pode estar vazio!")
+            print("Nome de usuário não pode estar vazio!")
             continue
         
         password = input("Senha: ").strip()

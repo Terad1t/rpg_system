@@ -8,6 +8,7 @@ import PlayerInventory from '../components/player/PlayerInventory'
 import PlayerSkills from '../components/player/PlayerSkills'
 import PlayerChat from '../components/player/PlayerChat'
 import Sidebar from '../components/common/Sidebar'
+import CharacterRequestForm from './CharacterRequestForm'
 
 const TABS = {
   CHARACTER: 'character',
@@ -94,11 +95,6 @@ export default function PlayerDashboard() {
         <div className="p-6">
           {activeTab === TABS.CHARACTER && (
             <>
-              {error && (
-                <Card className="p-6 mb-6 bg-red-500/10 border border-red-500 text-red-200">
-                  <p>{error}</p>
-                </Card>
-              )}
               {characterData ? (
                 <>
                   <PlayerCharacter character={characterData} />
@@ -109,10 +105,13 @@ export default function PlayerDashboard() {
                     />
                   </div>
                 </>
-              ) : !error ? (
-                <Card className="p-6 bg-dark-secondary border border-dark-border text-secondary">
-                  <p>Nenhum personagem disponível.</p>
-                </Card>
+              ) : error ? (
+                <>
+                  <Card className="p-6 mb-6 bg-red-500/10 border border-red-500 text-red-200">
+                    <p>{error}</p>
+                  </Card>
+                  <CharacterRequestForm />
+                </>
               ) : null}
             </>
           )}

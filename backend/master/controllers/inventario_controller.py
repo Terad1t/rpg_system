@@ -8,6 +8,7 @@ from ..services.inventory_services import (
     set_item_quantity,
 )
 from ..utils.auth_dependencies import get_current_master, get_current_user
+from ..utils.inventory_manager import inventory_manager
 from ..models.character_model import Character
 from ..models.item_model import Item
 
@@ -28,7 +29,7 @@ def read_inventory(character_id: int, current_user = Depends(get_current_user), 
 
 
 @router.post("/add")
-def post_add_item(character_id: int, item_id: int, quantity: int = 1, current_master = Depends(get_current_master), db: Session = Depends(get_db)):
+async def post_add_item(character_id: int, item_id: int, quantity: int = 1, current_master = Depends(get_current_master), db: Session = Depends(get_db)):
     master_id = int(current_master.user_id)
     if character_id <= 0 or item_id <= 0:
         raise HTTPException(status_code=400, detail="character_id and item_id must be positive")
@@ -42,11 +43,22 @@ def post_add_item(character_id: int, item_id: int, quantity: int = 1, current_ma
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     inv = add_item_to_inventory(db, character_id=character_id, item_id=item_id, quantity=quantity, performed_by=master_id)
+    
+    # Emite evento em tempo real
+    await inventory_manager.broadcast_inventory_update(
+        character_id=character_id,
+        action="added",
+        item_id=item_id,
+        item_name=item.name,
+        quantity=quantity,
+        performed_by=master_id
+    )
+    
     return inv
 
 
 @router.post("/remove")
-def post_remove_item(character_id: int, item_id: int, quantity: int = 1, current_master = Depends(get_current_master), db: Session = Depends(get_db)):
+async def post_remove_item(character_id: int, item_id: int, quantity: int = 1, current_master = Depends(get_current_master), db: Session = Depends(get_db)):
     master_id = int(current_master.user_id)
     if character_id <= 0 or item_id <= 0:
         raise HTTPException(status_code=400, detail="character_id and item_id must be positive")
@@ -61,6 +73,17 @@ def post_remove_item(character_id: int, item_id: int, quantity: int = 1, current
     ok = remove_item_from_inventory(db, character_id=character_id, item_id=item_id, quantity=quantity, performed_by=master_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Item not found in inventory")
+    
+    # Emite evento em tempo real
+    await inventory_manager.broadcast_inventory_update(
+        character_id=character_id,
+        action="removed",
+        item_id=item_id,
+        item_name=item.name,
+        quantity=quantity,
+        performed_by=master_id
+    )
+    
     return {"message": "removed"}
 
 

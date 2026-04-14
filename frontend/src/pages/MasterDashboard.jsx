@@ -2,12 +2,18 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Button } from '../components/common'
 import Sidebar from '../components/common/Sidebar'
+import ItemManager from './ItemManager'
+import CharacterRequests from './CharacterRequests'
+import RaceManager from './RaceManager'
+import ClassManager from './ClassManager'
 
 const TABS = {
   DASHBOARD: 'dashboard',
   PLAYERS: 'players',
   CHARACTERS: 'characters',
   ITEMS: 'items',
+  RACES: 'races',
+  CLASSES: 'classes',
   SKILLS: 'skills',
   MAP: 'map',
 }
@@ -36,9 +42,19 @@ export default function MasterDashboard() {
 
         {/* Content */}
         <div className="p-6">
-          <p className="text-secondary">
-            Seção {activeTab} em desenvolvimento...
-          </p>
+          {activeTab === TABS.CHARACTERS ? (
+            <CharacterRequests />
+          ) : activeTab === TABS.ITEMS ? (
+            <ItemManager />
+          ) : activeTab === TABS.RACES ? (
+            <RaceManager />
+          ) : activeTab === TABS.CLASSES ? (
+            <ClassManager />
+          ) : (
+            <p className="text-secondary">
+              Seção {activeTab} em desenvolvimento...
+            </p>
+          )}
         </div>
       </main>
     </div>

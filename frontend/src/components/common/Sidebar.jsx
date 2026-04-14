@@ -12,6 +12,8 @@ const MASTER_TABS = [
   { id: 'players', label: '👥 Jogadores', icon: '👥' },
   { id: 'characters', label: '🧙 Personagens', icon: '🧙' },
   { id: 'items', label: '💎 Itens', icon: '💎' },
+  { id: 'races', label: '🐉 Raças', icon: '🐉' },
+  { id: 'classes', label: '⚡ Classes', icon: '⚡' },
   { id: 'skills', label: '✨ Habilidades', icon: '✨' },
   { id: 'map', label: '🗺️ Mapa', icon: '🗺️' },
 ]
