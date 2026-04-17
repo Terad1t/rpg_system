@@ -56,11 +56,20 @@ from .models import (
 from .services.auth_services import initialize_master_if_not_exists
 
 # Prefer migrations: only create tables automatically if no alembic_version table exists
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 inspector = inspect(engine)
 if not inspector.has_table("alembic_version"):
     # Fallback for first-time setup or when migrations are not being used
     Base.metadata.create_all(bind=engine)
+
+    # SQLite schema drift fix (create_all doesn't alter existing tables)
+    if engine.dialect.name == "sqlite":
+        inspector_after = inspect(engine)
+        if inspector_after.has_table("characters"):
+            cols = {c["name"] for c in inspector_after.get_columns("characters")}
+            if "subclass" not in cols:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE characters ADD COLUMN subclass VARCHAR"))
 
 # Inicializa o Master se não existir
 db = SessionLocal()

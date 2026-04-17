@@ -9,7 +9,7 @@ export default function ClassManager() {
   const [message, setMessage] = useState(null);
 
   // Get auth token
-  const token = localStorage.getItem('access_token');
+  const token = localStorage.getItem('token');
 
   // Load classes
   useEffect(() => {
@@ -19,7 +19,7 @@ export default function ClassManager() {
   const fetchClasses = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/classes', {
+      const response = await fetch('http://localhost:8000/api/classes', {
         headers: {
           'Authorization': `Bearer ${token}`,
         }
@@ -48,8 +48,8 @@ export default function ClassManager() {
     try {
       const method = editingId ? 'PUT' : 'POST';
       const url = editingId 
-        ? `http://localhost:8000/classes/${editingId}`
-        : 'http://localhost:8000/classes';
+        ? `http://localhost:8000/api/classes/${editingId}`
+        : 'http://localhost:8000/api/classes';
 
       const response = await fetch(url, {
         method,
@@ -86,7 +86,7 @@ export default function ClassManager() {
     if (!confirm('Tem certeza que deseja deletar esta classe?')) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/classes/${id}`, {
+      const response = await fetch(`http://localhost:8000/api/classes/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -9,7 +9,7 @@ export default function RaceManager() {
   const [message, setMessage] = useState(null);
 
   // Get auth token
-  const token = localStorage.getItem('access_token');
+  const token = localStorage.getItem('token');
 
   // Load races
   useEffect(() => {
@@ -19,7 +19,7 @@ export default function RaceManager() {
   const fetchRaces = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/racas', {
+      const response = await fetch('http://localhost:8000/api/racas', {
         headers: {
           'Authorization': `Bearer ${token}`,
         }
@@ -47,9 +47,10 @@ export default function RaceManager() {
 
     try {
       const method = editingId ? 'PUT' : 'POST';
+
       const url = editingId 
-        ? `http://localhost:8000/racas/${editingId}`
-        : 'http://localhost:8000/racas';
+        ? `http://localhost:8000/api/racas/${editingId}`
+        : 'http://localhost:8000/api/racas';
 
       const response = await fetch(url, {
         method,
@@ -82,7 +83,7 @@ export default function RaceManager() {
     if (!confirm('Tem certeza que deseja deletar esta raça?')) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/racas/${id}`, {
+      const response = await fetch(`http://localhost:8000/api/racas/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

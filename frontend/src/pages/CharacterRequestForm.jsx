@@ -24,11 +24,19 @@ export default function CharacterRequestForm() {
   useEffect(() => {
     // Carrega raças e classes disponíveis
     Promise.all([
-      fetch("/api/racas").then((res) => {
+      fetch("/api/racas", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }).then((res) => {
         if (!res.ok) throw new Error(`Erro ao buscar raças: ${res.status}`);
         return res.json();
       }),
-      fetch("/api/classes").then((res) => {
+      fetch("/api/classes", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }).then((res) => {
         if (!res.ok) throw new Error(`Erro ao buscar classes: ${res.status}`);
         return res.json();
       }),
@@ -67,11 +75,11 @@ export default function CharacterRequestForm() {
     }
 
     try {
-      const response = await fetch("/api/characters/requests", {
+      const response = await fetch("/api/characters/requests/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({
           ...formData,

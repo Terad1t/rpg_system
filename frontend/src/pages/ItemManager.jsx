@@ -4,7 +4,7 @@ import { useUserNotificationsWebSocket } from "../hooks/useUserNotificationsWebS
 
 export default function ItemManager() {
   const { user } = useAuth();
-  const { isConnected, notifications } = useUserNotificationsWebSocket(user?.user_id);
+  const { isConnected, notifications } = useUserNotificationsWebSocket(user?.id);
   const [items, setItems] = useState([]);
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +30,7 @@ export default function ItemManager() {
         }),
       fetch("/api/characters", {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       })
         .then((res) => {
@@ -69,7 +69,7 @@ export default function ItemManager() {
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         }
       );

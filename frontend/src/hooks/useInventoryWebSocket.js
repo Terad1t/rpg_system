@@ -11,7 +11,7 @@ export function useInventoryWebSocket(characterId) {
     try {
       const response = await fetch(`/api/characters/${characterId}/inventory/`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
       if (!response.ok) {
@@ -40,7 +40,7 @@ export function useInventoryWebSocket(characterId) {
   useEffect(() => {
     if (!characterId) return;
 
-    const token = localStorage.getItem("access_token");
+    const token = localStorage.getItem("token");
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${wsProtocol}//${window.location.host}/ws/inventory/${characterId}?token=${token}`;
 

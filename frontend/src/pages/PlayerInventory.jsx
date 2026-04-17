@@ -13,7 +13,7 @@ export default function PlayerInventory() {
 
     fetch(`/api/my-characters`, {
       headers: {
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
     })
       .then((res) => {

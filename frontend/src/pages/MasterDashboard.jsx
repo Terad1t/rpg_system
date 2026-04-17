@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Button } from '../components/common'
+import { Button, NotificationCenter } from '../components/common'
 import Sidebar from '../components/common/Sidebar'
+import { useUserNotificationsWebSocket } from '../hooks/useUserNotificationsWebSocket'
 import ItemManager from './ItemManager'
 import CharacterRequests from './CharacterRequests'
 import RaceManager from './RaceManager'
@@ -20,6 +21,7 @@ const TABS = {
 
 export default function MasterDashboard() {
   const { user, logout } = useAuth()
+  const { isConnected, notifications, clearNotifications } = useUserNotificationsWebSocket(user?.id)
   const [activeTab, setActiveTab] = useState(TABS.DASHBOARD)
 
   return (
@@ -34,9 +36,16 @@ export default function MasterDashboard() {
               <h1 className="text-3xl font-bold text-orange-500">Painel Master</h1>
               <p className="text-secondary mt-1">Bem-vindo, Mestre</p>
             </div>
-            <Button variant="ghost" onClick={logout}>
-              Sair
-            </Button>
+            <div className="flex items-center gap-3">
+              <NotificationCenter
+                notifications={notifications}
+                isConnected={isConnected}
+                onClear={clearNotifications}
+              />
+              <Button variant="ghost" onClick={logout}>
+                Sair
+              </Button>
+            </div>
           </div>
         </div>
 

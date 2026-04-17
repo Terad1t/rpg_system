@@ -5,7 +5,7 @@ from ..models.attribute_model import Attribute
 from ..models.raca_bonus_model import RacaBonus
 from ..models.raca_model import Raca
 from ..models.classe_model import Classe
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict
 
 
@@ -17,7 +17,26 @@ INVESTIGATION_MAP = {
 }
 
 
+def expire_pending_requests(db: Session, now: datetime | None = None, ttl_days: int = 2) -> int:
+    """Marca como rejeitadas as requisições pendentes mais antigas que `ttl_days`."""
+    now = now or datetime.utcnow()
+    cutoff = now - timedelta(days=ttl_days)
+
+    updated = (
+        db.query(CharacterRequest)
+        .filter(CharacterRequest.status == "pending")
+        .filter(CharacterRequest.created_at < cutoff)
+        .update({CharacterRequest.status: "rejected"}, synchronize_session=False)
+    )
+    if updated:
+        db.commit()
+    return int(updated or 0)
+
+
 def create_character_request(db: Session, user_id: int, payload: Dict):
+    # Aplica expiração antes de criar (mantém a fila limpa)
+    expire_pending_requests(db)
+
     req = CharacterRequest(user_id=user_id, **payload)
     db.add(req)
     db.commit()
@@ -26,6 +45,9 @@ def create_character_request(db: Session, user_id: int, payload: Dict):
 
 
 def get_requests(db: Session, status: str | None = None, skip: int = 0, limit: int = 100):
+    # Expira automaticamente pendências antigas
+    expire_pending_requests(db)
+
     q = db.query(CharacterRequest)
     if status:
         q = q.filter(CharacterRequest.status == status)
@@ -37,6 +59,9 @@ def get_request_by_id(db: Session, request_id: int):
 
 
 def approve_request(db: Session, request_id: int, approval_data: Dict, master_user_id: int):
+    # Expira automaticamente pendências antigas antes de aprovar
+    expire_pending_requests(db)
+
     req = db.query(CharacterRequest).filter(CharacterRequest.id == request_id).first()
     if not req or req.status != "pending":
         return None

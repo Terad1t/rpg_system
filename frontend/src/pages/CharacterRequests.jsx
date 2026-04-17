@@ -6,6 +6,7 @@ export default function CharacterRequests() {
   const [error, setError] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [approvingId, setApprovingId] = useState(null);
+  const [rejectingId, setRejectingId] = useState(null);
 
   useEffect(() => {
     loadRequests();
@@ -13,14 +14,36 @@ export default function CharacterRequests() {
 
   const loadRequests = async () => {
     try {
-      const response = await fetch("/api/characters/requests", {
+      const response = await fetch("/api/characters/requests/", {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error("Erro ao buscar requisições");
+        let detail = "Erro ao buscar requisições";
+        try {
+          const contentType = response.headers.get("content-type") || "";
+          if (contentType.includes("application/json")) {
+            const errData = await response.json();
+            if (errData && typeof errData === "object") {
+              if ("detail" in errData) {
+                const d = errData.detail;
+                detail = typeof d === "string" ? d : JSON.stringify(d, null, 2);
+              } else {
+                detail = JSON.stringify(errData, null, 2);
+              }
+            } else {
+              detail = String(errData);
+            }
+          } else {
+            const text = await response.text();
+            detail = text || detail;
+          }
+        } catch (e) {
+          detail = e?.message || detail;
+        }
+        throw new Error(detail);
       }
 
       const data = await response.json();
@@ -28,7 +51,11 @@ export default function CharacterRequests() {
       setError(null);
     } catch (err) {
       console.error("Erro:", err);
-      setError(err.message);
+      let msg = err;
+      if (err && typeof err === "object") {
+        msg = err.message || "Erro ao buscar requisições";
+      }
+      setError(String(msg));
     } finally {
       setLoading(false);
     }
@@ -42,7 +69,7 @@ export default function CharacterRequests() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({}),
       });
@@ -51,8 +78,10 @@ export default function CharacterRequests() {
         throw new Error("Erro ao aprovar requisição");
       }
 
-      // Remove da lista
-      setRequests((prev) => prev.filter((r) => r.id !== requestId));
+      // Atualiza status local
+      setRequests((prev) =>
+        prev.map((r) => (r.id === requestId ? { ...r, status: "approved" } : r))
+      );
       setSelectedRequest(null);
     } catch (err) {
       console.error("Erro:", err);
@@ -62,12 +91,47 @@ export default function CharacterRequests() {
     }
   };
 
+  const handleReject = async (requestId) => {
+    setRejectingId(requestId);
+
+    try {
+      const response = await fetch(`/api/characters/requests/${requestId}/reject`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao rejeitar requisição");
+      }
+
+      setRequests((prev) =>
+        prev.map((r) => (r.id === requestId ? { ...r, status: "rejected" } : r))
+      );
+      setSelectedRequest(null);
+    } catch (err) {
+      console.error("Erro:", err);
+      alert("Erro ao rejeitar: " + err.message);
+    } finally {
+      setRejectingId(null);
+    }
+  };
+
   if (loading) {
     return <div className="text-secondary">Carregando requisições...</div>;
   }
 
   if (error) {
-    return <div className="text-red-500">Erro: {error}</div>;
+    let errorString = error;
+    if (typeof error !== 'string') {
+      try {
+        errorString = JSON.stringify(error, null, 2);
+      } catch {
+        errorString = String(error);
+      }
+    }
+    return <div className="text-red-500">Erro: {errorString}</div>;
   }
 
   const pendingRequests = requests.filter((r) => r.status === "pending");
@@ -135,10 +199,20 @@ export default function CharacterRequests() {
                         e.stopPropagation();
                         handleApprove(req.id);
                       }}
-                      disabled={approvingId === req.id}
+                      disabled={approvingId === req.id || rejectingId === req.id}
                       className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-bold py-2 px-4 rounded transition text-sm"
                     >
                       {approvingId === req.id ? "Aprovando..." : "Aprovar"}
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleReject(req.id);
+                      }}
+                      disabled={rejectingId === req.id || approvingId === req.id}
+                      className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-bold py-2 px-4 rounded transition text-sm"
+                    >
+                      {rejectingId === req.id ? "Rejeitando..." : "Rejeitar"}
                     </button>
                   </div>
                 </div>
@@ -204,10 +278,17 @@ export default function CharacterRequests() {
           <div className="flex gap-2">
             <button
               onClick={() => handleApprove(selectedRequest.id)}
-              disabled={approvingId === selectedRequest.id}
+              disabled={approvingId === selectedRequest.id || rejectingId === selectedRequest.id}
               className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-bold py-2 px-6 rounded transition"
             >
               {approvingId === selectedRequest.id ? "Aprovando..." : "Aprovar Personagem"}
+            </button>
+            <button
+              onClick={() => handleReject(selectedRequest.id)}
+              disabled={rejectingId === selectedRequest.id || approvingId === selectedRequest.id}
+              className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-bold py-2 px-6 rounded transition"
+            >
+              {rejectingId === selectedRequest.id ? "Rejeitando..." : "Rejeitar Personagem"}
             </button>
             <button
               onClick={() => setSelectedRequest(null)}
