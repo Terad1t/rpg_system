@@ -12,10 +12,11 @@ export function useUserNotificationsWebSocket(userId) {
     if (!userId) return;
 
     const token = localStorage.getItem("token");
+    if (!token) return;
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws/user-updates/${userId}?token=${token}`;
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws/user-updates/${userId}`;
 
-    const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(wsUrl, ['bearer', token]);
 
     ws.onopen = () => {
       setIsConnected(true);

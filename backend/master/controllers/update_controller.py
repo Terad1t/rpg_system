@@ -1,7 +1,9 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, status, Query, Depends
+import logging
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from ..database.connection import get_db
-from ..utils.auth_utils import decode_token
+from ..utils.auth_utils import decode_token, get_websocket_token
 from ..utils.broadcast import broadcast_manager
 from ..services.auth_services import get_user_by_id
 
@@ -12,7 +14,6 @@ router = APIRouter(prefix="/updates", tags=["updates"])
 @router.websocket("/ws")
 async def websocket_updates_endpoint(
     websocket: WebSocket,
-    token: str = Query(...),
     db: Session = Depends(get_db)
 ):
     """
@@ -27,7 +28,8 @@ async def websocket_updates_endpoint(
 
     # ========== VALIDAÇÃO DE AUTENTICAÇÃO ==========
 
-    payload = decode_token(token)
+    token = get_websocket_token(websocket)
+    payload = decode_token(token) if token else None
 
     if payload is None:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired token")
@@ -54,7 +56,12 @@ async def websocket_updates_endpoint(
 
     username = user.login  # Usa o login como username
 
-    await broadcast_manager.connect(websocket, user_id, username)
+    await broadcast_manager.connect(
+        websocket,
+        user_id,
+        username,
+        subprotocol="bearer" if websocket.headers.get("sec-websocket-protocol") else None,
+    )
 
     try:
         # Mantém a conexão aberta para receber atualizações
@@ -65,6 +72,9 @@ async def websocket_updates_endpoint(
             # Por enquanto, apenas mantém a conexão
 
     except WebSocketDisconnect:
+        broadcast_manager.disconnect(user_id)
+    except Exception:
+        logging.exception("Unhandled updates websocket error for user %s", user_id)
         broadcast_manager.disconnect(user_id)
 
 # ========== ENDPOINT PARA VER USUÁRIOS CONECTADOS ==========

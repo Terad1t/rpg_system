@@ -1,7 +1,9 @@
+import logging
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, status, Query, Depends
 from sqlalchemy.orm import Session
 from ..database.connection import get_db
-from ..utils.auth_utils import decode_token
+from ..utils.auth_utils import decode_token, get_websocket_token
 from ..utils.chat_manager import chat_manager
 from ..utils.auth_dependencies import get_current_player, CurrentUser
 from ..schemas.chat_schema import ChatMessageBroadcast, ChatHistoryResponse, ChatMessageRead
@@ -53,7 +55,6 @@ def get_active_users():
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
-    token: str = Query(...),
     db: Session = Depends(get_db)
 ):
     """
@@ -68,7 +69,8 @@ async def websocket_endpoint(
     
     # ========== VALIDAÇÃO DE AUTENTICAÇÃO ==========
     
-    payload = decode_token(token)
+    token = get_websocket_token(websocket)
+    payload = decode_token(token) if token else None
     
     if payload is None:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired token")
@@ -95,7 +97,12 @@ async def websocket_endpoint(
     
     username = user.login  # Usa o login como username
     
-    await chat_manager.connect(websocket, user_id, username)
+    await chat_manager.connect(
+        websocket,
+        user_id,
+        username,
+        subprotocol="bearer" if websocket.headers.get("sec-websocket-protocol") else None,
+    )
     
     # Envia histórico recente para o novo usuário
     try:
@@ -111,7 +118,7 @@ async def websocket_endpoint(
             )
             await chat_manager.send_to_user(user_id, history_msg)
     except Exception:
-        pass
+        logging.exception("Failed to send recent chat history to user %s", user_id)
     
     # ========== LOOP DE RECEBIMENTO DE MENSAGENS ==========
     
@@ -169,7 +176,8 @@ async def websocket_endpoint(
                 # Broadcast para todos
                 await chat_manager.broadcast(broadcast_msg)
                 
-            except Exception as e:
+            except Exception:
+                logging.exception("Error saving chat message for user %s", user_id)
                 error_msg = ChatMessageBroadcast(
                     user_id=0,
                     username="System",
@@ -192,9 +200,10 @@ async def websocket_endpoint(
         )
         await chat_manager.broadcast(leave_msg)
     
-    except Exception as e:
+    except Exception:
+        logging.exception("Unhandled chat websocket error for user %s", user_id)
         chat_manager.disconnect(user_id)
         try:
             await websocket.close(code=status.WS_1011_SERVER_ERROR, reason="Internal server error")
-        except:
-            pass
+        except Exception:
+            logging.exception("Failed to close chat websocket for user %s", user_id)

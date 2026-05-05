@@ -17,13 +17,15 @@ export default function PlayerChat() {
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
-    // Conectar ao WebSocket
+    // Só conecta se user existir, for player e token presente
     const token = localStorage.getItem('token')
-    if (token) {
+    if (user && user.role === 'player' && token) {
+      console.log('[PlayerChat] Tentando conectar websocket com token:', token)
       websocket.connect(token).then(() => {
         setIsConnected(true)
+        console.log('[PlayerChat] WebSocket conectado com sucesso')
       }).catch((error) => {
-        console.error('Erro ao conectar ao WebSocket:', error)
+        console.error('[PlayerChat] Erro ao conectar ao WebSocket:', error)
         setIsConnected(false)
       })
 
@@ -43,8 +45,17 @@ export default function PlayerChat() {
         unsubscribe()
         websocket.disconnect()
       }
+    } else {
+      setIsConnected(false)
+      if (!user) {
+        console.warn('[PlayerChat] Usuário não definido, não conectando ao websocket')
+      } else if (user.role !== 'player') {
+        console.warn('[PlayerChat] Usuário não é player, não conectando ao websocket')
+      } else if (!token) {
+        console.warn('[PlayerChat] Token não encontrado no localStorage, não conectando ao websocket')
+      }
     }
-  }, [user?.id])
+  }, [user?.id, user?.role])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })

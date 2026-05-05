@@ -12,26 +12,13 @@ from ..utils.auth_utils import (
 # ========== INICIALIZAÇÃO ==========
 
 def initialize_master_if_not_exists(db: Session) -> User:
-    """Cria o Master padrão se nenhum Master existir no sistema"""
+    """Retorna o Master existente; bootstrap automático foi desativado."""
     existing_master = db.query(User).filter(User.role == "master").first()
     
     if existing_master:
         return existing_master
-    
-    # Cria o Master inicial com credenciais padrão
-    master = User(
-        login="master",
-        password_hash=hash_password("master123"),
-        pin_hash=hash_pin("1234"),
-        role="master",
-        is_active=True,
-        created_by=None
-    )
-    db.add(master)
-    db.commit()
-    db.refresh(master)
-    
-    return master
+
+    raise RuntimeError("Master bootstrap is disabled; use the secure initialization route")
 
 # ========== AUTENTICAÇÃO ==========
 

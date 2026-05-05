@@ -1,10 +1,12 @@
+import logging
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from sqlalchemy.orm import Session
 
 from ..database.connection import get_db
 from ..models.character_model import Character
 from ..services.auth_services import get_user_by_id
-from ..utils.auth_utils import decode_token
+from ..utils.auth_utils import decode_token, get_websocket_token
 from ..utils.inventory_manager import inventory_manager
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
@@ -14,13 +16,13 @@ router = APIRouter(prefix="/ws", tags=["websocket"])
 async def websocket_inventory_endpoint(
     websocket: WebSocket,
     character_id: int,
-    token: str | None = None,
     db: Session = Depends(get_db),
 ):
     """
     WebSocket para receber atualizações de inventário em tempo real
     Uso: ws://localhost:8000/ws/inventory/{character_id}?token={auth_token}
     """
+    token = get_websocket_token(websocket)
     payload = decode_token(token) if token else None
     if not payload:
         await websocket.close(code=1008)
@@ -41,12 +43,19 @@ async def websocket_inventory_endpoint(
             await websocket.close(code=1008)
             return
 
-    await inventory_manager.subscribe_to_character_inventory(websocket, character_id)
+    await inventory_manager.subscribe_to_character_inventory(
+        websocket,
+        character_id,
+        subprotocol="bearer" if websocket.headers.get("sec-websocket-protocol") else None,
+    )
 
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
+        inventory_manager.unsubscribe_from_character_inventory(websocket, character_id)
+    except Exception:
+        logging.exception("Unhandled inventory websocket error for character %s", character_id)
         inventory_manager.unsubscribe_from_character_inventory(websocket, character_id)
 
 
@@ -54,13 +63,13 @@ async def websocket_inventory_endpoint(
 async def websocket_user_updates_endpoint(
     websocket: WebSocket,
     user_id: int,
-    token: str | None = None,
     db: Session = Depends(get_db),
 ):
     """
     WebSocket para receber notificações gerais de um usuário em tempo real
     Uso: ws://localhost:8000/ws/user-updates/{user_id}?token={auth_token}
     """
+    token = get_websocket_token(websocket)
     payload = decode_token(token) if token else None
     if not payload:
         await websocket.close(code=1008)
@@ -78,10 +87,17 @@ async def websocket_user_updates_endpoint(
         await websocket.close(code=1008)
         return
 
-    await inventory_manager.subscribe_to_user_updates(websocket, user_id)
+    await inventory_manager.subscribe_to_user_updates(
+        websocket,
+        user_id,
+        subprotocol="bearer" if websocket.headers.get("sec-websocket-protocol") else None,
+    )
 
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
+        inventory_manager.unsubscribe_from_user_updates(websocket, user_id)
+    except Exception:
+        logging.exception("Unhandled user updates websocket error for user %s", user_id)
         inventory_manager.unsubscribe_from_user_updates(websocket, user_id)

@@ -1,6 +1,7 @@
 from fastapi import WebSocket
 from typing import Dict, List
 import json
+import logging
 from ..schemas.update_schema import UpdateEvent
 
 class UpdateConnectionManager:
@@ -12,9 +13,9 @@ class UpdateConnectionManager:
         # Mapeia user_id -> username para referência
         self.user_names: Dict[int, str] = {}
 
-    async def connect(self, websocket: WebSocket, user_id: int, username: str):
+    async def connect(self, websocket: WebSocket, user_id: int, username: str, subprotocol: str | None = None):
         """Conecta um novo usuário para receber atualizações"""
-        await websocket.accept()
+        await websocket.accept(subprotocol=subprotocol)
         self.active_connections[user_id] = websocket
         self.user_names[user_id] = username
 
@@ -37,8 +38,9 @@ class UpdateConnectionManager:
         for user_id, connection in self.active_connections.items():
             try:
                 await connection.send_text(event_json)
-            except Exception as e:
+            except Exception:
                 # Conexão quebrada, marca para remoção
+                logging.exception("Failed to broadcast update event to user %s", user_id)
                 disconnected_users.append(user_id)
 
         # Remove conexões quebradas
@@ -52,6 +54,7 @@ class UpdateConnectionManager:
             try:
                 await connection.send_text(event.model_dump_json())
             except Exception:
+                logging.exception("Failed to send update event to user %s", user_id)
                 self.disconnect(user_id)
 
     def get_active_users_count(self) -> int:

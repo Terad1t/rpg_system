@@ -41,10 +41,14 @@ export function useInventoryWebSocket(characterId) {
     if (!characterId) return;
 
     const token = localStorage.getItem("token");
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws/inventory/${characterId}?token=${token}`;
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws/inventory/${characterId}`;
 
-    const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(wsUrl, ['bearer', token]);
 
     ws.onopen = () => {
       setIsConnected(true);

@@ -5,10 +5,15 @@ class WebSocketService {
     this.listeners = {}
   }
 
-  connect(token, path = '/chat/ws') {
+  connect(token, path = '/api/chat/ws') {
     return new Promise((resolve, reject) => {
       try {
-        this.ws = new WebSocket(`${this.url}${path}?token=${token}`)
+        if (!token) {
+          reject(new Error('Token ausente'))
+          return
+        }
+
+        this.ws = new WebSocket(`${this.url}${path}`, ['bearer', token])
 
         this.ws.onopen = () => {
           console.log('WebSocket conectado')

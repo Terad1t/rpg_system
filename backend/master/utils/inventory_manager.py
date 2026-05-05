@@ -1,6 +1,7 @@
 from fastapi import WebSocket
 from typing import Dict, List, Optional
 import json
+import logging
 from datetime import datetime
 
 class InventoryManager:
@@ -12,16 +13,16 @@ class InventoryManager:
         # Mapeia user_id -> lista de WebSocket connections (para notificações gerais)
         self.user_subscriptions: Dict[int, List[WebSocket]] = {}
     
-    async def subscribe_to_character_inventory(self, websocket: WebSocket, character_id: int):
+    async def subscribe_to_character_inventory(self, websocket: WebSocket, character_id: int, subprotocol: str | None = None):
         """Inscreve um websocket para receber atualizações do inventário de um personagem"""
-        await websocket.accept()
+        await websocket.accept(subprotocol=subprotocol)
         if character_id not in self.inventory_subscriptions:
             self.inventory_subscriptions[character_id] = []
         self.inventory_subscriptions[character_id].append(websocket)
     
-    async def subscribe_to_user_updates(self, websocket: WebSocket, user_id: int):
+    async def subscribe_to_user_updates(self, websocket: WebSocket, user_id: int, subprotocol: str | None = None):
         """Inscreve um websocket para receber notificações gerais para um usuário"""
-        await websocket.accept()
+        await websocket.accept(subprotocol=subprotocol)
         if user_id not in self.user_subscriptions:
             self.user_subscriptions[user_id] = []
         self.user_subscriptions[user_id].append(websocket)
@@ -60,6 +61,7 @@ class InventoryManager:
             try:
                 await websocket.send_text(message_json)
             except Exception:
+                logging.exception("Failed to broadcast inventory update to character %s", character_id)
                 disconnected_sockets.append(websocket)
         
         # Remove conexões quebradas
@@ -90,6 +92,7 @@ class InventoryManager:
             try:
                 await websocket.send_text(message_json)
             except Exception:
+                logging.exception("Failed to broadcast user notification to user %s", user_id)
                 disconnected_sockets.append(websocket)
         
         # Remove conexões quebradas

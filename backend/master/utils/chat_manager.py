@@ -1,6 +1,7 @@
 from fastapi import WebSocket
 from typing import Dict, List
 import json
+import logging
 from ..schemas.chat_schema import ChatMessageBroadcast
 from datetime import datetime
 
@@ -13,9 +14,9 @@ class ConnectionManager:
         # Mapeia user_id -> username para referência
         self.user_names: Dict[int, str] = {}
     
-    async def connect(self, websocket: WebSocket, user_id: int, username: str):
+    async def connect(self, websocket: WebSocket, user_id: int, username: str, subprotocol: str | None = None):
         """Conecta um novo usuário"""
-        await websocket.accept()
+        await websocket.accept(subprotocol=subprotocol)
         self.active_connections[user_id] = websocket
         self.user_names[user_id] = username
         
@@ -42,8 +43,9 @@ class ConnectionManager:
         for user_id, connection in self.active_connections.items():
             try:
                 await connection.send_text(message_json)
-            except Exception as e:
+            except Exception:
                 # Conexão quebrada, marca para remoção
+                logging.exception("Failed to broadcast chat message to user %s", user_id)
                 disconnected_users.append(user_id)
         
         # Remove conexões quebradas
@@ -57,6 +59,7 @@ class ConnectionManager:
             try:
                 await connection.send_text(message.model_dump_json())
             except Exception:
+                logging.exception("Failed to send chat message to user %s", user_id)
                 self.disconnect(user_id)
     
     async def broadcast_system_message(self, content: str):

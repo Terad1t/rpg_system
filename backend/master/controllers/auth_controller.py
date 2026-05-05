@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+
+from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session
 from ..database.connection import get_db
 from ..schemas.auth_schema import (
@@ -17,7 +19,6 @@ from ..services.auth_services import (
     update_user,
     delete_user,
     deactivate_user,
-    initialize_master_if_not_exists,
     get_user_by_login,
 )
 from ..utils.auth_dependencies import get_current_user, get_current_master, CurrentUser
@@ -27,13 +28,30 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # ========== INICIALIZAÇÃO ==========
 
 @router.post("/initialize-master", response_model=UserRead)
-def initialize_master(master_data: MasterInitialization, db: Session = Depends(get_db)):
+def initialize_master(
+    master_data: MasterInitialization,
+    bootstrap_token: str = Header(..., alias="X-Master-Bootstrap-Token"),
+    db: Session = Depends(get_db),
+):
     """
-    Inicializa o Master do sistema se nenhum Master existir.
-    Essa rota só funciona se o banco estiver vazio de Masters.
+    Inicializa o Master do sistema apenas com um token de bootstrap configurado em ambiente.
     """
     from ..services.auth_services import hash_password, hash_pin
     from ..models.user_model import User
+
+    expected_bootstrap_token = os.getenv("MASTER_BOOTSTRAP_TOKEN")
+
+    if not expected_bootstrap_token:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Master bootstrap is not configured"
+        )
+
+    if bootstrap_token != expected_bootstrap_token:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid bootstrap token"
+        )
     
     # Verifica se já existe um Master
     existing_master = db.query(User).filter(User.role == "master").first()
