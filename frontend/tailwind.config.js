@@ -12,20 +12,21 @@ export default {
           'orange-dark': '#ff7700',
         },
         dark: {
-          bg: '#000',
-          'bg-secondary': '#1a1a1a',
-          border: '#333',
+          // Slightly softened dark palette for better contrast
+          bg: '#071025',
+          'bg-secondary': '#0f1724',
+          border: '#24303a',
         }
       },
       backgroundColor: {
-        'dark': '#000',
-        'dark-secondary': '#1a1a1a',
+        'dark': '#071025',
+        'dark-secondary': '#0f1724',
       },
       borderColor: {
-        'dark': '#333',
+        'dark': '#24303a',
       },
       textColor: {
-        'secondary': '#888',
+        'secondary': '#9AA6B2',
       }
     },
   },

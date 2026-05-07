@@ -1,5 +1,6 @@
 from passlib.context import CryptContext
 import os
+from pathlib import Path
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from fastapi import WebSocket
@@ -8,10 +9,58 @@ from typing import Optional
 # Configuração de hash de senha usando pbkdf2_sha256 em vez de bcrypt (mais compatível)
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
-# Chave secreta para JWT: exige variável de ambiente explícita
+# Chave secreta para JWT: exige variável de ambiente explícita.
+# Para facilitar o dev local no Windows, tentamos carregar um `.env` na raiz do projeto.
+
+
+def _try_load_dotenv() -> None:
+    """Carrega variáveis de ambiente de um arquivo `.env` na raiz do projeto.
+
+    - Não sobrescreve variáveis já definidas em `os.environ`.
+    - Formato suportado: `CHAVE=valor` (linhas vazias e comentários `#` são ignorados).
+    """
+
+    try:
+        repo_root = Path(__file__).resolve().parents[3]
+    except Exception:
+        return
+
+    dotenv_path = repo_root / ".env"
+    if not dotenv_path.exists():
+        return
+
+    try:
+        # `utf-8-sig` remove BOM, comum quando o arquivo foi criado via `Out-File -Encoding utf8`.
+        for raw_line in dotenv_path.read_text(encoding="utf-8-sig").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+
+            if "=" not in line:
+                continue
+
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+    except Exception:
+        # Se o `.env` estiver inválido, preferimos falhar depois com uma mensagem clara.
+        return
+
+
+_try_load_dotenv()
+
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
-    raise RuntimeError("SECRET_KEY environment variable is required")
+    raise RuntimeError(
+        "SECRET_KEY environment variable is required. "
+        "\n\nWindows PowerShell (somente nesta sessão):\n" \
+        "  $env:SECRET_KEY='dev-secret-change-me'\n" \
+        "  .\\.venv\\Scripts\\uvicorn.exe backend.master.main:app --reload --host 127.0.0.1 --port 8000\n" \
+        "\nOu crie um arquivo `.env` na raiz do projeto com:\n" \
+        "  SECRET_KEY=dev-secret-change-me\n"
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 horas
 

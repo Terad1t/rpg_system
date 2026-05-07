@@ -9,22 +9,32 @@ export function useUserNotificationsWebSocket(userId) {
   }, []);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      console.log('[useUserNotificationsWebSocket] userId não definido, pulando...')
+      return;
+    }
 
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+      console.log('[useUserNotificationsWebSocket] Token não encontrado, pulando...')
+      return;
+    }
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws/user-updates/${userId}`;
+    const wsUrl = `${wsProtocol}//${window.location.host}/api/updates/ws`;
+
+    console.log('[useUserNotificationsWebSocket] Conectando WebSocket:', wsUrl);
 
     const ws = new WebSocket(wsUrl, ['bearer', token]);
 
     ws.onopen = () => {
+      console.log('[useUserNotificationsWebSocket] WebSocket conectado com sucesso');
       setIsConnected(true);
     };
 
     ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
+        console.log('[useUserNotificationsWebSocket] Nova notificação recebida:', message);
         setNotifications((prev) => {
           const next = [...prev, message];
           // Evita crescer indefinidamente
@@ -36,11 +46,12 @@ export function useUserNotificationsWebSocket(userId) {
     };
 
     ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
+      console.error("[useUserNotificationsWebSocket] WebSocket error:", error);
       setIsConnected(false);
     };
 
     ws.onclose = () => {
+      console.log('[useUserNotificationsWebSocket] WebSocket desconectado');
       setIsConnected(false);
     };
 

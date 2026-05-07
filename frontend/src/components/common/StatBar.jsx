@@ -5,7 +5,9 @@ export default function StatBar({
   variant = 'hp',
   width = '100%'
 }) {
-  const percentage = (current / max) * 100
+  const safeMax = max > 0 ? max : 0
+  const rawPercentage = safeMax > 0 ? (current / safeMax) * 100 : 0
+  const percentage = Math.max(0, Math.min(100, rawPercentage))
 
   const colors = {
     hp: {

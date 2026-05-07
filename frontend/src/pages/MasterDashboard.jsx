@@ -7,17 +7,17 @@ import ItemManager from './ItemManager'
 import CharacterRequests from './CharacterRequests'
 import RaceManager from './RaceManager'
 import ClassManager from './ClassManager'
+import FightManager from './FightManager'
 import api from '../services/api'
 import StatsGrid from '../components/dashboard/StatsGrid'
-import PlayerGrowthChart from '../components/dashboard/PlayerGrowthChart'
-import ClassDistributionPie from '../components/dashboard/ClassDistributionPie'
-import ItemsBarChart from '../components/dashboard/ItemsBarChart'
+import FightStatsPanel from '../components/dashboard/FightStatsPanel'
 
 const TABS = {
   DASHBOARD: 'dashboard',
   PLAYERS: 'players',
   CHARACTERS: 'characters',
   ITEMS: 'items',
+  FIGHT: 'fight',
   RACES: 'races',
   CLASSES: 'classes',
   SKILLS: 'skills',
@@ -35,7 +35,7 @@ export default function MasterDashboard() {
 
     const loadStats = async () => {
       try {
-        const res = await api.get('/master/stats')
+        const res = await api.get('/fights/stats')
         if (mounted && res?.data) setStats(res.data)
       } catch (err) {
         // Falha ao buscar dados: usar dados mock por segurança
@@ -43,29 +43,45 @@ export default function MasterDashboard() {
           setStats({
             players: 128,
             characters: 342,
-            activeSessions: 12,
+            fight_count: 12,
             items: 475,
-            growth: [
-              { date: '01/04', players: 12 },
-              { date: '02/04', players: 18 },
-              { date: '03/04', players: 22 },
-              { date: '04/04', players: 30 },
-              { date: '05/04', players: 27 },
-              { date: '06/04', players: 35 },
+            total_player_damage: 820,
+            total_enemy_damage: 670,
+            total_player_healing: 410,
+            total_enemy_healing: 180,
+            average_session: {
+              player_damage: 136.6,
+              enemy_damage: 111.6,
+              player_healing: 68.3,
+              enemy_healing: 30,
+            },
+            damage_chart: [
+              { session: 'Fight 01', players: 160, enemies: 120 },
+              { session: 'Fight 02', players: 230, enemies: 190 },
             ],
-            classDistribution: [
-              { name: 'Guerreiro', value: 40 },
-              { name: 'Mago', value: 25 },
-              { name: 'Ladino', value: 15 },
-              { name: 'Clérigo', value: 12 },
-              { name: 'Outro', value: 8 },
+            healing_chart: [
+              { session: 'Fight 01', players: 90, enemies: 20 },
+              { session: 'Fight 02', players: 120, enemies: 60 },
             ],
-            itemsByCategory: [
-              { category: 'Armas', count: 120 },
-              { category: 'Armaduras', count: 80 },
-              { category: 'Consumíveis', count: 240 },
-              { category: 'Artefatos', count: 35 },
+            evolution: [
+              { date: '01/04', players: 250, enemies: 140 },
+              { date: '02/04', players: 350, enemies: 210 },
             ],
+            history: [
+              {
+                id: 1,
+                name: 'Fight 01',
+                started_at: '2026-04-01T18:00:00',
+                status: 'finished',
+                duration_seconds: 420,
+                player_damage: 160,
+                enemy_damage: 120,
+                player_healing: 90,
+                enemy_healing: 20,
+              },
+            ],
+            player_ranking: [{ name: 'Akira', value: 240 }],
+            enemy_ranking: [{ name: 'Shadow', value: 180 }],
           })
         }
       }
@@ -109,19 +125,16 @@ export default function MasterDashboard() {
             <>
               <StatsGrid stats={stats} />
 
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <PlayerGrowthChart data={stats?.growth} />
-                <ClassDistributionPie data={stats?.classDistribution} />
-              </div>
-
               <div className="mt-6">
-                <ItemsBarChart data={stats?.itemsByCategory} />
+                <FightStatsPanel stats={stats} />
               </div>
             </>
           ) : activeTab === TABS.CHARACTERS ? (
             <CharacterRequests />
           ) : activeTab === TABS.ITEMS ? (
             <ItemManager />
+          ) : activeTab === TABS.FIGHT ? (
+            <FightManager />
           ) : activeTab === TABS.RACES ? (
             <RaceManager />
           ) : activeTab === TABS.CLASSES ? (

@@ -13,6 +13,10 @@ class MapBase(BaseModel):
     allowed_races: Optional[List[int]] = []
     danger_level: Optional[str] = "none"
     map_type: Optional[str] = "region"
+    region_id: Optional[int] = None
+    country_id: Optional[int] = None
+    village_id: Optional[int] = None
+    parent_map_id: Optional[int] = None
 
     @field_validator("danger_level")
     def validate_danger_level(cls, v):
@@ -51,6 +55,10 @@ class MapUpdate(BaseModel):
     allowed_races: Optional[List[int]] = None
     danger_level: Optional[str] = None
     map_type: Optional[str] = None
+    region_id: Optional[int] = None
+    country_id: Optional[int] = None
+    village_id: Optional[int] = None
+    parent_map_id: Optional[int] = None
 
     @field_validator("danger_level")
     def validate_danger_level_opt(cls, v):

@@ -52,46 +52,46 @@ const MOCK_SKILLS = [
 
 export default function PlayerSkills() {
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="mx-auto max-w-6xl space-y-6">
       <div className="space-y-4">
         {MOCK_SKILLS.map((skill) => (
-          <Card key={skill.id} className="hover:shadow-xl">
-            <div className="flex items-start justify-between">
+          <Card key={skill.id} className="border border-white/10 bg-[#08111f]/90 hover:shadow-xl">
+            <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-xl font-bold text-orange-500">{skill.name}</h3>
-                  <span className="text-xs bg-orange-500 text-white px-2 py-1 rounded">
+                  <h3 className="text-xl font-bold text-white">{skill.name}</h3>
+                  <span className="rounded border border-orange-400/40 bg-orange-400/10 px-2 py-1 text-xs text-orange-200">
                     Nível {skill.level}
                   </span>
                 </div>
-                <p className="text-secondary mb-4">{skill.description}</p>
+                <p className="mb-4 text-slate-300">{skill.description}</p>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="bg-dark rounded p-2">
-                    <p className="text-xs text-secondary">Vigor</p>
-                    <p className="text-lg font-bold text-blue-400">
+                  <div className="rounded border border-white/10 bg-white/5 p-2">
+                    <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Vigor</p>
+                    <p className="text-lg font-bold text-cyan-200">
                       -{skill.cost.vigor}
                     </p>
                   </div>
                   {skill.cost.hp > 0 && (
-                    <div className="bg-dark rounded p-2">
-                      <p className="text-xs text-secondary">Vida</p>
-                      <p className="text-lg font-bold text-red-400">
+                    <div className="rounded border border-white/10 bg-white/5 p-2">
+                      <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Vida</p>
+                      <p className="text-lg font-bold text-red-300">
                         -{skill.cost.hp}
                       </p>
                     </div>
                   )}
                   {skill.damage > 0 && (
-                    <div className="bg-dark rounded p-2">
-                      <p className="text-xs text-secondary">Dano</p>
-                      <p className="text-lg font-bold text-red-500">
+                    <div className="rounded border border-white/10 bg-white/5 p-2">
+                      <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Dano</p>
+                      <p className="text-lg font-bold text-orange-200">
                         +{skill.damage}
                       </p>
                     </div>
                   )}
-                  <div className="bg-dark rounded p-2">
-                    <p className="text-xs text-secondary">Recarga</p>
-                    <p className="text-lg font-bold text-purple-400">
+                  <div className="rounded border border-white/10 bg-white/5 p-2">
+                    <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Recarga</p>
+                    <p className="text-lg font-bold text-white">
                       {skill.cooldown}s
                     </p>
                   </div>
@@ -101,7 +101,7 @@ export default function PlayerSkills() {
               <Button
                 variant="primary"
                 size="lg"
-                className="ml-4 whitespace-nowrap"
+                className="ml-4 whitespace-nowrap shadow-[0_0_18px_rgba(56,189,248,0.18)]"
               >
                 Usar
               </Button>

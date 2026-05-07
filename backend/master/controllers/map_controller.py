@@ -8,6 +8,7 @@ from ..services.map_services import (
     create_map,
     update_map,
     delete_map,
+    build_map_tree,
 )
 from ..schemas.update_schema import ItemUpdateEvent
 from ..utils.broadcast import broadcast_manager
@@ -18,6 +19,11 @@ router = APIRouter(prefix="/maps", tags=["maps"])
 @router.get("/", response_model=list[MapRead])
 def read_maps(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return get_maps(db, skip=skip, limit=limit)
+
+
+@router.get("/hierarchy")
+def read_map_hierarchy(db: Session = Depends(get_db)):
+    return {"regions": build_map_tree(db)}
 
 
 @router.get("/{map_id}", response_model=MapRead)

@@ -8,6 +8,12 @@ export function useInventoryWebSocket(characterId) {
 
   // Carrega inventário inicial
   const loadInventory = useCallback(async () => {
+    if (!characterId) {
+      setInventory([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/characters/${characterId}/inventory/`, {
         headers: {
@@ -33,6 +39,7 @@ export function useInventoryWebSocket(characterId) {
   }, [characterId]);
 
   useEffect(() => {
+    if (!characterId) return;
     loadInventory();
   }, [loadInventory]);
 

@@ -10,7 +10,17 @@ def get_item_by_id(db: Session, item_id: int) -> Optional[Item]:
     return db.query(Item).filter(Item.id == item_id).first()
 
 def create_item(db: Session, item: ItemCreate) -> Item:
-    db_item = Item(**item.model_dump())
+    quantity = item.quantity if item.quantity is not None else item.quantidade_maxima or 1
+    db_item = Item(
+        name=item.name,
+        tipo=item.tipo,
+        image=item.image,
+        description=item.description,
+        buffs=item.buffs,
+        nerfs=item.nerfs,
+        quantity=quantity,
+        quantidade_maxima=quantity,
+    )
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
@@ -19,8 +29,16 @@ def create_item(db: Session, item: ItemCreate) -> Item:
 def update_item(db: Session, item_id: int, item_update: ItemUpdate) -> Optional[Item]:
     db_item = db.query(Item).filter(Item.id == item_id).first()
     if db_item:
-        for key, value in item_update.model_dump(exclude_unset=True).items():
-            setattr(db_item, key, value)
+        data = item_update.model_dump(exclude_unset=True)
+        if "quantity" in data and data["quantity"] is not None:
+            db_item.quantity = data["quantity"]
+            db_item.quantidade_maxima = data["quantity"]
+        if "quantidade_maxima" in data and data["quantidade_maxima"] is not None:
+            db_item.quantity = data["quantidade_maxima"]
+            db_item.quantidade_maxima = data["quantidade_maxima"]
+        for key in ("name", "tipo", "image", "description", "buffs", "nerfs"):
+            if key in data:
+                setattr(db_item, key, data[key])
         db.commit()
         db.refresh(db_item)
     return db_item

@@ -14,6 +14,7 @@ class CharacterCreateByMaster(BaseModel):
     raca_id: int = Field(..., ge=1)
     classe_id: int = Field(..., ge=1)
     user_id: Optional[int] = None
+    current_map_id: Optional[int] = None
 
     @field_validator("tipo")
     def normalize_tipo(cls, v):
@@ -48,6 +49,7 @@ class CharacterUpdateByMaster(BaseModel):
     raca_id: Optional[int] = None
     classe_id: Optional[int] = None
     user_id: Optional[int] = None
+    current_map_id: Optional[int] = None
 
     @field_validator("tipo")
     def normalize_tipo_opt(cls, v):
@@ -89,6 +91,7 @@ class CharacterRead(BaseModel):
     codename: Optional[str] = None
     description: Optional[str] = None
     user_id: Optional[int] = None
+    current_map_id: Optional[int] = None
 
     class Config:
         from_attributes = True

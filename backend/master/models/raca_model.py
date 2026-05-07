@@ -8,6 +8,7 @@ class Raca(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String)
+    image = Column(String)
 
     # Relacionamentos
     characters = relationship("Character", back_populates="raca")

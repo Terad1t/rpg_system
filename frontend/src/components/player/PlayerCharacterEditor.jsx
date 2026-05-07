@@ -78,31 +78,31 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
   }
 
   return (
-    <Card title="Editar Personagem">
+    <Card title="Editar Personagem" className="border border-white/10 bg-[#08111f]/90">
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Exibir dados imutáveis */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 border-b border-dark-border">
+        <div className="grid grid-cols-1 gap-4 border-b border-white/10 pb-4 md:grid-cols-2">
           <div>
-            <label className="text-secondary text-sm">Nome (imutável)</label>
-            <p className="text-lg font-bold text-orange-500">{character.name}</p>
+            <label className="text-xs uppercase tracking-[0.35em] text-slate-400">Nome (imutável)</label>
+            <p className="text-lg font-bold text-white">{character.name}</p>
           </div>
           <div>
-            <label className="text-secondary text-sm">Raça (imutável)</label>
-            <p className="text-lg font-bold text-orange-500">{character.race}</p>
+            <label className="text-xs uppercase tracking-[0.35em] text-slate-400">Raça (imutável)</label>
+            <p className="text-lg font-bold text-cyan-200">{character.race}</p>
           </div>
           <div>
-            <label className="text-secondary text-sm">Classe (imutável)</label>
-            <p className="text-lg font-bold text-orange-500">{character.class}</p>
+            <label className="text-xs uppercase tracking-[0.35em] text-slate-400">Classe (imutável)</label>
+            <p className="text-lg font-bold text-orange-200">{character.class}</p>
           </div>
           <div>
-            <label className="text-secondary text-sm">Nível (imutável)</label>
-            <p className="text-lg font-bold text-orange-500">{character.level}</p>
+            <label className="text-xs uppercase tracking-[0.35em] text-slate-400">Nível (imutável)</label>
+            <p className="text-lg font-bold text-white">{character.level}</p>
           </div>
         </div>
 
         {/* Campos editáveis */}
         <div>
-          <label htmlFor="codename" className="block text-secondary text-sm mb-2">
+          <label htmlFor="codename" className="block text-xs uppercase tracking-[0.35em] text-slate-400 mb-2">
             Codinome
           </label>
           <Input
@@ -126,7 +126,7 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-secondary text-sm mb-2">
+          <label htmlFor="description" className="block text-xs uppercase tracking-[0.35em] text-slate-400 mb-2">
             Descrição
           </label>
           <textarea
@@ -138,7 +138,7 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
             maxLength={500}
             disabled={loading}
             rows={6}
-            className="w-full px-3 py-2 bg-dark-secondary border border-dark-border rounded-lg text-white placeholder-dark-secondary focus:outline-none focus:border-orange-500 transition-colors resize-none"
+            className="w-full resize-none rounded-lg border border-white/10 bg-[#0c1528] px-3 py-2 text-white placeholder-slate-500 transition-colors focus:border-cyan-400 focus:outline-none"
           />
           <div className="flex justify-between mt-1">
             <span className="text-xs text-red-500">
@@ -152,19 +152,19 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
 
         {/* Mensagens */}
         {successMessage && (
-          <div className="p-3 bg-green-500/20 border border-green-500 rounded-lg text-green-400 text-sm">
+          <div className="rounded-lg border border-green-500/40 bg-green-500/20 p-3 text-sm text-green-300">
             {successMessage}
           </div>
         )}
 
         {errors.submit && (
-          <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg text-red-400 text-sm">
+          <div className="rounded-lg border border-red-500/40 bg-red-500/20 p-3 text-sm text-red-300">
             {errors.submit}
           </div>
         )}
 
         {/* Botões */}
-        <div className="flex gap-3 pt-4 border-t border-dark-border">
+        <div className="flex gap-3 border-t border-white/10 pt-4">
           <Button
             type="submit"
             disabled={loading}

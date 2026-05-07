@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Text
 from sqlalchemy.orm import relationship
 from ..database.connection import Base
 
@@ -10,7 +10,10 @@ class Item(Base):
     tipo = Column(String, nullable=False)
     image = Column(String)  # caminho da imagem
     description = Column(String)
-    quantidade_maxima = Column(Integer, default=1)  # Máximo que cada player pode ter
+    buffs = Column(Text)
+    nerfs = Column(Text)
+    quantity = Column(Integer, default=1)
+    quantidade_maxima = Column(Integer, default=1)  # Compatibilidade com dados antigos
 
     # Relacionamentos
     inventario = relationship("Inventario", back_populates="item")

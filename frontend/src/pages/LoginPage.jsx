@@ -107,18 +107,7 @@ export default function LoginPage() {
               {isLoading ? 'Autenticando...' : 'Entrar'}
             </button>
           </form>
-
-          <div className="mt-6 pt-6 border-t border-gray-700">
-            <p className="text-gray-500 text-sm text-center">
-              Credenciais de teste:
-              <br />
-              Usuário: master
-              <br />
-              Senha: master123
-              <br />
-              PIN: 1234
-            </p>
-          </div>
+          <br></br>
         </div>
       </div>
     </div>

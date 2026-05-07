@@ -62,15 +62,15 @@ class CharacterRequestRead(BaseModel):
 
 class CharacterApproval(BaseModel):
     subclass: Optional[str] = None
-    hp: int = Field(..., ge=1)
-    vigor: int = Field(..., ge=0, le=100)
-    agility: int = Field(..., ge=0, le=100)
-    speed: int = Field(..., ge=0, le=100)
-    charisma: int = Field(..., ge=0, le=100)
-    intellect: int = Field(..., ge=0, le=100)
-    investigation: str  # basic/intermediate/advanced/forensic
-    presence: int = Field(..., ge=0, le=100)
-    occultism: int = Field(..., ge=0, le=100)
+    hp: int = Field(1, ge=1)
+    vigor: int = Field(0, ge=0, le=100)
+    agility: int = Field(0, ge=0, le=100)
+    speed: int = Field(0, ge=0, le=100)
+    charisma: int = Field(0, ge=0, le=100)
+    intellect: int = Field(0, ge=0, le=100)
+    investigation: str = Field("basic")  # basic/intermediate/advanced/forensic
+    presence: int = Field(0, ge=0, le=100)
+    occultism: int = Field(0, ge=0, le=100)
 
     @field_validator("investigation")
     def validate_investigation(cls, v):

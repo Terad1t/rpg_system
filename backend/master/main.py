@@ -19,6 +19,9 @@ from .controllers.inventario_controller import router as inventario_router
 from .controllers.auth_controller import router as auth_router
 from .controllers.chat_controller import router as chat_router
 from .controllers.update_controller import router as update_router
+from .controllers.fight_controller import router as fight_router
+from .utils.schema_migration import ensure_schema_updates
+from .database.connection import Base, engine
 import sys
 import os
 
@@ -27,6 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Importa rotas do player
 from ..player.controllers.player_character_controller import router as player_character_router
+from ..player.controllers.player_panel_controller import router as player_panel_router
 
 # Importa todos os modelos para criar as tabelas
 from .models import (
@@ -39,6 +43,8 @@ from .models import (
     inventario_model,
     batalha_model,
     batalha_participante_model,
+    fight_model,
+    fight_entry_model,
     habilidades_model,
     region_model,
     country_model,
@@ -55,6 +61,12 @@ from .models import (
 from .services.auth_services import initialize_master_if_not_exists
 
 app = FastAPI(title="RPG System API", version="1.0.0")
+
+
+@app.on_event("startup")
+def _ensure_schema() -> None:
+    Base.metadata.create_all(bind=engine)
+    ensure_schema_updates()
 
 # CORS
 app.add_middleware(
@@ -89,9 +101,11 @@ app.include_router(classe_router, prefix="/api")
 app.include_router(player_notes_router, prefix="/api")
 app.include_router(character_habilidade_router, prefix="/api")
 app.include_router(inventario_router, prefix="/api")
+app.include_router(fight_router, prefix="/api")
 
 # ========== WebSocket Routes ==========
 app.include_router(websocket_router)
 
 # ========== Player Routes ==========
 app.include_router(player_character_router, prefix="/api")
+app.include_router(player_panel_router, prefix="/api")

@@ -20,9 +20,17 @@ class Map(Base):
     description = Column(Text)
     danger_level = Column(String, default="none")
     map_type = Column(String, default="region")
+    region_id = Column(Integer, ForeignKey("regions.id"), nullable=True)
+    country_id = Column(Integer, ForeignKey("countries.id"), nullable=True)
+    village_id = Column(Integer, ForeignKey("villages.id"), nullable=True)
+    parent_map_id = Column(Integer, ForeignKey("maps.id"), nullable=True)
 
     # Relação many-to-many com raças
     racas = relationship("Raca", secondary=maps_racas, back_populates="maps")
+    region = relationship("Region")
+    country = relationship("Country")
+    village = relationship("Village")
+    parent_map = relationship("Map", remote_side=[id], backref="child_maps")
 
     @property
     def allowed_races(self):

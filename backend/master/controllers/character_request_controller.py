@@ -64,7 +64,7 @@ async def create_request(
             detail="Daily limit reached: max 3 character requests per 24h.",
         )
 
-    # Limite: 2 personagens ativos (tipo=player) por jogador
+    # Limite: 3 personagens ativos (tipo=player) por jogador
     active_characters = (
         db.query(func.count(Character.id))
         .filter(Character.user_id == user_id)
@@ -72,10 +72,10 @@ async def create_request(
         .scalar()
         or 0
     )
-    if active_characters >= 2:
+    if active_characters >= 3:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Character limit reached: max 2 active player characters.",
+            detail="Character limit reached: max 3 active player characters.",
         )
 
     req = create_character_request(db, user_id=user_id, payload=payload.model_dump())

@@ -4,7 +4,7 @@ export default function RaceManager() {
   const [races, setRaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [formData, setFormData] = useState({ name: '', description: '' });
+  const [formData, setFormData] = useState({ name: '', description: '', image: '' });
   const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState(null);
 
@@ -64,7 +64,7 @@ export default function RaceManager() {
       if (!response.ok) throw new Error('Falha ao salvar raça');
 
       setMessage({ type: 'success', text: editingId ? 'Raça atualizada!' : 'Raça criada!' });
-      setFormData({ name: '', description: '' });
+      setFormData({ name: '', description: '', image: '' });
       setEditingId(null);
       
       setTimeout(() => setMessage(null), 3000);
@@ -75,7 +75,7 @@ export default function RaceManager() {
   };
 
   const handleEdit = (race) => {
-    setFormData({ name: race.name, description: race.description || '' });
+    setFormData({ name: race.name, description: race.description || '', image: race.image || '' });
     setEditingId(race.id);
   };
 
@@ -101,7 +101,7 @@ export default function RaceManager() {
   };
 
   const handleCancel = () => {
-    setFormData({ name: '', description: '' });
+    setFormData({ name: '', description: '', image: '' });
     setEditingId(null);
   };
 
@@ -141,6 +141,19 @@ export default function RaceManager() {
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-400"
                 rows="4"
                 placeholder="Descreva as características da raça..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Imagem
+              </label>
+              <input
+                type="url"
+                value={formData.image}
+                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-400"
+                placeholder="URL da foto da raça"
               />
             </div>
 
@@ -192,6 +205,13 @@ export default function RaceManager() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h4 className="font-semibold text-orange-300">{race.name}</h4>
+                      {race.image && (
+                        <img
+                          src={race.image}
+                          alt={race.name}
+                          className="mt-2 h-28 w-full rounded object-cover"
+                        />
+                      )}
                       {race.description && (
                         <p className="text-sm text-slate-400 mt-1">{race.description}</p>
                       )}

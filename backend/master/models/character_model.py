@@ -20,9 +20,11 @@ class Character(Base):
     
     # Relacionamento com usuário (opcional, para players)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    current_map_id = Column(Integer, ForeignKey("maps.id"), nullable=True)
 
     # Relationship to User
     user = relationship("User")
+    current_map = relationship("Map")
 
     # Relacionamentos
     raca = relationship("Raca", back_populates="characters")

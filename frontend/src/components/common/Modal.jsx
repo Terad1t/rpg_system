@@ -1,4 +1,5 @@
 import Button from './Button'
+import { IconX } from './Icons'
 
 export default function Modal({ 
   isOpen, 
@@ -26,8 +27,9 @@ export default function Modal({
           <button
             onClick={onClose}
             className="text-secondary hover:text-primary-orange transition-colors"
+            aria-label="Fechar"
           >
-            ✕
+            <IconX className="w-5 h-5" />
           </button>
         </div>
 
