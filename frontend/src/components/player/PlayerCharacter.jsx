@@ -8,6 +8,14 @@ export default function PlayerCharacter({ character }) {
     intelligence: 'Inteligência',
     wisdom: 'Sabedoria',
     charisma: 'Carisma',
+    hp: 'Vida',
+    vigor: 'Vigor',
+    agility: 'Agilidade',
+    speed: 'Velocidade',
+    intellect: 'Intelecto',
+    investigation: 'Investigação',
+    presence: 'Presença',
+    occultism: 'Ocultismo',
   }
 
   const attributeEntries = Object.entries(character.attributes || {})
@@ -107,7 +115,7 @@ export default function PlayerCharacter({ character }) {
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-300 via-sky-400 to-orange-400" />
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">{attributeLabels[key]}</p>
+                    <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">{attributeLabels[key] || key}</p>
                     <p className="mt-3 text-3xl font-black text-white">{value}</p>
                   </div>
                   <span className="rounded-full border border-white/10 bg-[#0c1528] px-3 py-1 text-xs font-semibold text-cyan-200">

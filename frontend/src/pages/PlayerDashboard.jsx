@@ -173,6 +173,7 @@ function MapHierarchy({ worldMap = [], selectedMapId = null }) {
 export default function PlayerDashboard() {
   const { user, logout } = useAuth()
   const { notifications } = useUserNotificationsWebSocket(user?.id)
+  const [mobileChatOpen, setMobileChatOpen] = useState(false)
   const [activeTab, setActiveTab] = useState(TABS.OVERVIEW)
   const [panelData, setPanelData] = useState({ characters: [], races: [], world_map: [] })
   const [selectedCharacterId, setSelectedCharacterId] = useState(null)
@@ -181,12 +182,11 @@ export default function PlayerDashboard() {
 
   const loadPanel = async () => {
     try {
-      console.log('[PlayerDashboard] Carregando painel do jogador...')
-      const response = await api.get('/player-panel/')
-      console.log('[PlayerDashboard] Painel carregado:', response.data)
+      const response = await api.get('/api/player-panel/')
       setPanelData(response.data || { characters: [], races: [], world_map: [] })
+      setError(null)
     } catch (err) {
-      console.error('[PlayerDashboard] Erro ao carregar painel do jogador:', err)
+      console.error('Erro ao carregar painel do jogador:', err)
       setError('Não foi possível carregar os dados do painel.')
     } finally {
       setLoading(false)
@@ -202,15 +202,13 @@ export default function PlayerDashboard() {
   useEffect(() => {
     if (notifications && notifications.length > 0) {
       const latestNotification = notifications[notifications.length - 1]
-      console.log('[PlayerDashboard] Notificação recebida:', latestNotification)
       if (latestNotification?.data?.action === 'created' && latestNotification?.data?.character_id) {
-        console.log('[PlayerDashboard] Novo personagem criado, refetchando painel:', latestNotification.data.character_id)
         loadPanel()
       }
     }
   }, [notifications])
 
-  const activeTabMeta = TAB_META[activeTab] || TAB_META[TABS.CHARACTER]
+  const activeTabMeta = TAB_META[activeTab] || TAB_META[TABS.OVERVIEW]
   const visibleCharacters = useMemo(() => (panelData.characters || []).slice(0, 3), [panelData.characters])
   const selectedCharacter = visibleCharacters.find((character) => character.id === selectedCharacterId) || visibleCharacters[0] || null
   const playerItems = useMemo(() => aggregateItems(visibleCharacters), [visibleCharacters])
@@ -241,19 +239,19 @@ export default function PlayerDashboard() {
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
       <main className="relative flex-1 overflow-auto">
-        <div className="sticky top-0 z-10 border-b border-white/10 bg-[#07111fe6] px-6 py-5 backdrop-blur-xl">
+        <div className="sticky top-0 z-10 border-b border-white/10 bg-[#07111fe6] px-4 py-4 backdrop-blur-xl sm:px-6 sm:py-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="space-y-3">
               <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-200/75">
                 Player Interface
               </p>
-              <h1 className="text-4xl font-black uppercase tracking-[0.2em] text-white">Painel dos Jogadores</h1>
+              <h1 className="text-2xl font-black uppercase tracking-[0.12em] text-white sm:text-4xl sm:tracking-[0.2em]">Painel dos Jogadores</h1>
               <p className="text-sm uppercase tracking-[0.35em] text-slate-300">Bem-vindo, {user?.login}</p>
               <p className="max-w-2xl text-sm text-slate-300">
                 {activeTabMeta.label}: {activeTabMeta.description}
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3 xl:w-[34rem]">
+            <div className="grid gap-3 min-[480px]:grid-cols-3 xl:w-[34rem]">
               <div className="border border-white/10 bg-white/5 px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Personagem</p>
                 <p className="mt-1 text-lg font-semibold text-white">{selectedCharacter?.name || 'Sem personagem'}</p>
@@ -264,18 +262,34 @@ export default function PlayerDashboard() {
               </div>
               <div className="border border-white/10 bg-white/5 px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Itens</p>
-                <div className="mt-1 flex items-center justify-between gap-3">
-                  <p className="text-lg font-semibold text-orange-200">{playerItems.length}</p>
-                  <Button variant="ghost" onClick={logout}>
-                    Sair
-                  </Button>
-                </div>
+                <p className="mt-1 text-lg font-semibold text-orange-200">{playerItems.length}</p>
               </div>
             </div>
           </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button size="sm" onClick={loadPanel}>Atualizar painel</Button>
+            <Button size="sm" variant="ghost" onClick={logout}>Sair</Button>
+          </div>
+
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+            {Object.values(TABS).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`whitespace-nowrap border px-3 py-2 text-xs uppercase tracking-[0.25em] transition ${
+                  activeTab === tab
+                    ? 'border-cyan-400/60 bg-cyan-400/10 text-white'
+                    : 'border-white/10 bg-white/5 text-slate-300'
+                }`}
+              >
+                {TAB_META[tab]?.label || tab}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {activeTab === TABS.OVERVIEW && (
             <div className="space-y-6">
               <div className="grid gap-4 md:grid-cols-3">
@@ -454,7 +468,9 @@ export default function PlayerDashboard() {
                   />
                   <PlayerInventory characterId={selectedCharacter.id} inventory={selectedCharacter.inventory} />
                   <PlayerSkills />
-                  <PlayerChat />
+                  <div className="hidden lg:block">
+                    <PlayerChat />
+                  </div>
                 </div>
               )}
             </div>
@@ -464,7 +480,7 @@ export default function PlayerDashboard() {
             <MapHierarchy worldMap={panelData.world_map || []} selectedMapId={selectedCharacter?.current_map_id || null} />
           )}
 
-          {selectedCharacter && activeTab !== TABS.CHARACTERS && (
+          {selectedCharacter && activeTab === TABS.OVERVIEW && (
             <div className="mt-8 space-y-6">
               <Card title={`Painel do Personagem // ${selectedCharacter.name}`} className="border border-white/10 bg-[#08111f]/90">
                 <p className="text-sm text-slate-300">
@@ -485,7 +501,27 @@ export default function PlayerDashboard() {
               />
               <PlayerInventory characterId={selectedCharacter.id} inventory={selectedCharacter.inventory} />
               <PlayerSkills />
-              <PlayerChat />
+              <div className="hidden lg:block">
+                <PlayerChat />
+              </div>
+              {/* Mobile chat drawer trigger */}
+              <div className="lg:hidden">
+                <div className="fixed z-40 bottom-6 right-4">
+                  <Button size="md" onClick={() => setMobileChatOpen(true)} className="rounded-full px-4 py-3 shadow-lg">Chat</Button>
+                </div>
+                {mobileChatOpen && (
+                  <div className="fixed inset-0 z-50 flex items-end lg:hidden">
+                    <div className="absolute inset-0 bg-black/50" onClick={() => setMobileChatOpen(false)} />
+                    <div className="relative w-full h-3/4 bg-[#07111fe6] p-4 overflow-auto">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-bold text-white">Chat</h3>
+                        <Button size="sm" variant="ghost" onClick={() => setMobileChatOpen(false)}>Fechar</Button>
+                      </div>
+                      <PlayerChat />
+                    </div>
+                  </div>
+                )}
+              </div>
               {selectedCharacter.current_map && (
                 <Card title="Localização Atual" className="border border-white/10 bg-[#08111f]/90">
                   <div className="grid gap-4 md:grid-cols-2">

@@ -3,6 +3,8 @@ import { Card, Button, Input } from '../common'
 import api from '../../services/api'
 
 export default function PlayerCharacterEditor({ character, onUpdate }) {
+  const raceName = typeof character.race === 'string' ? character.race : character.race?.name
+
   const [formData, setFormData] = useState({
     codename: character.codename || '',
     description: character.description || '',
@@ -54,7 +56,7 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
     
     try {
       const response = await api.put(
-        `/my-characters/${character.id}`,
+        `/api/my-characters/${character.id}`,
         {
           codename: formData.codename || null,
           description: formData.description || null,
@@ -88,7 +90,7 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
           </div>
           <div>
             <label className="text-xs uppercase tracking-[0.35em] text-slate-400">Raça (imutável)</label>
-            <p className="text-lg font-bold text-cyan-200">{character.race}</p>
+            <p className="text-lg font-bold text-cyan-200">{raceName || 'Raça indefinida'}</p>
           </div>
           <div>
             <label className="text-xs uppercase tracking-[0.35em] text-slate-400">Classe (imutável)</label>

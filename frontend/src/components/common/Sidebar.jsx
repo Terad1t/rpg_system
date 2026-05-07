@@ -35,7 +35,7 @@ const MASTER_TABS = [
 ]
 
 export default function Sidebar({ activeTab, onTabChange, isMaster = false }) {
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
   const tabs = isMaster ? MASTER_TABS : PLAYER_TABS
 
   return (
@@ -52,7 +52,7 @@ export default function Sidebar({ activeTab, onTabChange, isMaster = false }) {
       {/* Sidebar */}
       <aside
         className={`
-          fixed lg:relative w-72 h-screen overflow-hidden border-r border-white/10
+          fixed lg:relative w-[17rem] sm:w-72 h-screen overflow-hidden border-r border-white/10
           bg-[#050b18]/95 backdrop-blur-xl shadow-[0_0_45px_rgba(0,0,0,0.35)]
           transition-all duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -70,7 +70,7 @@ export default function Sidebar({ activeTab, onTabChange, isMaster = false }) {
         </div>
 
         {/* Navigation */}
-        <nav className="relative p-4 space-y-3">
+        <nav className="relative max-h-[calc(100vh-13rem)] overflow-y-auto p-4 space-y-3 pb-20">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -112,7 +112,7 @@ export default function Sidebar({ activeTab, onTabChange, isMaster = false }) {
       {/* Overlay (mobile) */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/60 lg:hidden z-0 backdrop-blur-[1px]"
+          className="fixed inset-0 bg-black/60 lg:hidden z-10 backdrop-blur-[1px]"
           onClick={() => setIsOpen(false)}
         />
       )}
