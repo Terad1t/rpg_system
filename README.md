@@ -16,6 +16,47 @@ Sistema de RPG com API em FastAPI (Master + Player), autenticação JWT e comuni
 
 > Nota importante sobre rotas: o backend inclui a maioria dos routers com `prefix="/api"`. Então, por exemplo, `auth` é servido em `/api/auth/...`.
 
+## Ferramentas usadas
+
+### Backend e dados
+
+- Python 3.14+
+- FastAPI
+- Uvicorn
+- SQLAlchemy
+- Alembic
+- SQLite
+- JWT com `python-jose`
+- `passlib` e `bcrypt` para senhas
+- `python-multipart` para formulários e uploads
+- `websockets` para comunicação em tempo real
+- `requests` para integrações HTTP
+- `Flask`
+- `matplotlib`
+- `pandas`
+- `scikit-learn`
+- `ttkbootstrap`
+
+### Frontend
+
+- React
+- React DOM
+- Vite
+- Tailwind CSS
+- Axios
+- React Router DOM
+- Recharts
+
+### Testes e qualidade
+
+- Vitest
+- Testing Library (`@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`)
+- jsdom
+- `@vitest/coverage-v8`
+- `@vitest/ui`
+- PostCSS
+- Autoprefixer
+
 ## Estrutura do repositório
 
 - `backend/master/`: API principal (Master) + recursos compartilhados

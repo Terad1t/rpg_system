@@ -5,6 +5,7 @@ import Sidebar from '../components/common/Sidebar'
 import { useUserNotificationsWebSocket } from '../hooks/useUserNotificationsWebSocket'
 import ItemManager from './ItemManager'
 import CharacterRequests from './CharacterRequests'
+import MasterCharacterManager from './MasterCharacterManager'
 import RaceManager from './RaceManager'
 import ClassManager from './ClassManager'
 import FightManager from './FightManager'
@@ -35,7 +36,7 @@ export default function MasterDashboard() {
 
     const loadStats = async () => {
       try {
-        const res = await api.get('/fights/stats')
+        const res = await api.get('/api/fights/stats')
         if (mounted && res?.data) setStats(res.data)
       } catch (err) {
         // Falha ao buscar dados: usar dados mock por segurança
@@ -130,7 +131,7 @@ export default function MasterDashboard() {
               </div>
             </>
           ) : activeTab === TABS.CHARACTERS ? (
-            <CharacterRequests />
+            <MasterCharacterManager />
           ) : activeTab === TABS.ITEMS ? (
             <ItemManager />
           ) : activeTab === TABS.FIGHT ? (

@@ -22,9 +22,11 @@ export default function PlayerCharacter({ character }) {
   const raceName = typeof character.race === 'string' ? character.race : character.race?.name
   const raceDescription = typeof character.race === 'string' ? null : character.race?.description
   const raceImage = typeof character.race === 'string' ? null : character.race?.image
+  const buffs = typeof character.buffs === 'string' ? character.buffs : character.buffs ? JSON.stringify(character.buffs) : ''
+  const debuffs = typeof character.debuffs === 'string' ? character.debuffs : character.debuffs ? JSON.stringify(character.debuffs) : ''
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="w-full space-y-6">
       <Card className="overflow-hidden border border-cyan-400/20 bg-[#08111f]/90 shadow-[0_0_40px_rgba(0,0,0,0.25)]">
         <div className="relative overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(56,189,248,0.14),transparent_42%,rgba(255,122,24,0.14))]" />
@@ -75,7 +77,7 @@ export default function PlayerCharacter({ character }) {
         <Card title="Status Operacional" className="border border-white/10 bg-[#08111f]/90">
           <div className="space-y-5">
             <StatBar label="Vida" current={character.hp} max={character.maxHp} variant="hp" />
-            <StatBar label="Vigor" current={character.vigor} max={character.maxVigor} variant="vigor" width="100%" />
+            <StatBar label="Mana" current={character.mana} max={character.maxMana} variant="mana" width="100%" />
             <StatBar label="XP" current={character.xp} max={character.maxXp} variant="xp" />
           </div>
         </Card>
@@ -133,6 +135,25 @@ export default function PlayerCharacter({ character }) {
           })}
         </div>
       </Card>
+
+      {(buffs || debuffs) && (
+        <Card title="Efeitos Ativos" className="border border-white/10 bg-[#08111f]/90">
+          <div className="grid gap-4 md:grid-cols-2">
+            {buffs && (
+              <div className="border border-cyan-400/20 bg-cyan-400/10 p-4 text-cyan-100">
+                <p className="text-xs uppercase tracking-[0.35em] text-cyan-200">Buffs</p>
+                <p className="mt-2 text-sm whitespace-pre-wrap">{buffs}</p>
+              </div>
+            )}
+            {debuffs && (
+              <div className="border border-orange-400/20 bg-orange-400/10 p-4 text-orange-100">
+                <p className="text-xs uppercase tracking-[0.35em] text-orange-200">Debuffs</p>
+                <p className="mt-2 text-sm whitespace-pre-wrap">{debuffs}</p>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       {(character.current_map || raceImage) && (
         <Card title="Informações Adicionais" className="border border-white/10 bg-[#08111f]/90">

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { Button, Card } from '../components/common'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -21,34 +22,71 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    console.log('[LoginPage] Form submitted')
     setIsLoading(true)
 
     try {
+      console.log('[LoginPage] Calling login() with:', { login: formData.login })
       const user = await login(formData.login, formData.password, formData.pin)
+      console.log('[LoginPage] login() returned, user:', user)
+      console.log('[LoginPage] Navigating to:', user.role === 'master' ? '/master' : '/player')
       navigate(user.role === 'master' ? '/master' : '/player')
     } catch (err) {
+      console.error('[LoginPage] Catch block, error:', err.message)
       setError(authError || 'Erro ao fazer login. Verifique suas credenciais.')
     } finally {
+      console.log('[LoginPage] Finally block - setting isLoading to false')
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-orange-500 mb-2">RPG System</h1>
-          <p className="text-gray-400">Bem-vindo ao sistema de RPG</p>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.18),transparent_28%),radial-gradient(circle_at_80%_10%,rgba(255,122,24,0.12),transparent_24%),linear-gradient(180deg,#040815_0%,#07111f_45%,#050a12_100%)]" />
+      <div className="pointer-events-none absolute left-0 top-0 h-64 w-64 rounded-full bg-cyan-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute right-0 top-24 h-72 w-72 rounded-full bg-orange-400/10 blur-3xl" />
+
+      <div className="relative grid w-full max-w-5xl gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-200/75">RPG System</p>
+            <h1 className="max-w-xl text-4xl font-black uppercase tracking-[0.15em] text-white sm:text-5xl">
+              Acesso tático ao painel do jogador
+            </h1>
+            <p className="max-w-xl text-sm leading-6 text-slate-300">
+              Entre para acompanhar personagens, inventário, mapa e chat em uma interface compacta, pensada para desktop e celular.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card className="border border-white/10 bg-[#08111f]/90 p-4">
+              <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Painel</p>
+              <p className="mt-2 text-lg font-semibold text-white">Compacto</p>
+              <p className="mt-2 text-sm text-slate-300">Cards curtos e navegação rápida.</p>
+            </Card>
+            <Card className="border border-white/10 bg-[#08111f]/90 p-4">
+              <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Chat</p>
+              <p className="mt-2 text-lg font-semibold text-cyan-200">Flutuante</p>
+              <p className="mt-2 text-sm text-slate-300">Sempre acessível no canto da tela.</p>
+            </Card>
+            <Card className="border border-white/10 bg-[#08111f]/90 p-4">
+              <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Mobile</p>
+              <p className="mt-2 text-lg font-semibold text-orange-200">Sem rolagem excessiva</p>
+              <p className="mt-2 text-sm text-slate-300">Fluxo pensado para toque e leitura rápida.</p>
+            </Card>
+          </div>
         </div>
 
-        <div className="bg-gray-900 border border-gray-700 rounded-lg p-8 shadow-2xl">
-          <h2 className="text-2xl font-bold text-white mb-6">Entrar</h2>
+        <Card className="border border-white/10 bg-[#08111fe6] p-8 shadow-[0_0_40px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-200/75">Login</p>
+            <h2 className="text-2xl font-black uppercase tracking-[0.14em] text-white">Entrar</h2>
+            <p className="text-sm text-slate-300">Use seu login, senha e PIN para acessar o painel.</p>
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-orange-500 mb-2">
-                Usuário
-              </label>
+              <label className="mb-2 block text-xs uppercase tracking-[0.3em] text-slate-400">Usuário</label>
               <input
                 type="text"
                 name="login"
@@ -57,14 +95,12 @@ export default function LoginPage() {
                 placeholder="seu_usuario"
                 required
                 disabled={isLoading}
-                className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full rounded-xl border border-white/10 bg-[#050b18] px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-orange-500 mb-2">
-                Senha
-              </label>
+              <label className="mb-2 block text-xs uppercase tracking-[0.3em] text-slate-400">Senha</label>
               <input
                 type="password"
                 name="password"
@@ -73,14 +109,12 @@ export default function LoginPage() {
                 placeholder="Sua senha"
                 required
                 disabled={isLoading}
-                className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full rounded-xl border border-white/10 bg-[#050b18] px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-orange-500 mb-2">
-                PIN
-              </label>
+              <label className="mb-2 block text-xs uppercase tracking-[0.3em] text-slate-400">PIN</label>
               <input
                 type="password"
                 name="pin"
@@ -89,26 +123,21 @@ export default function LoginPage() {
                 placeholder="Seu PIN (4-6 dígitos)"
                 required
                 disabled={isLoading}
-                className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full rounded-xl border border-white/10 bg-[#050b18] px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
               />
             </div>
 
-            {error && (
-              <div className="bg-red-900/20 border border-red-500 rounded-lg p-3">
-                <p className="text-red-400 text-sm">{error}</p>
+            {(error || authError) && (
+              <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-200">
+                <p className="text-sm">{error || authError}</p>
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button type="submit" disabled={isLoading} className="w-full">
               {isLoading ? 'Autenticando...' : 'Entrar'}
-            </button>
+            </Button>
           </form>
-          <br></br>
-        </div>
+        </Card>
       </div>
     </div>
   )

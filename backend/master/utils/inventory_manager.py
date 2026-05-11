@@ -12,6 +12,8 @@ class InventoryManager:
         self.inventory_subscriptions: Dict[int, List[WebSocket]] = {}
         # Mapeia user_id -> lista de WebSocket connections (para notificações gerais)
         self.user_subscriptions: Dict[int, List[WebSocket]] = {}
+        # Mapeia character_id -> lista de WebSocket connections para atualizações de ficha/visualização
+        self.character_view_subscriptions: Dict[int, List[WebSocket]] = {}
     
     async def subscribe_to_character_inventory(self, websocket: WebSocket, character_id: int, subprotocol: str | None = None):
         """Inscreve um websocket para receber atualizações do inventário de um personagem"""
@@ -68,6 +70,46 @@ class InventoryManager:
         for ws in disconnected_sockets:
             if ws in self.inventory_subscriptions[character_id]:
                 self.inventory_subscriptions[character_id].remove(ws)
+
+    async def subscribe_to_character_view(self, websocket: WebSocket, character_id: int, subprotocol: str | None = None):
+        """Inscreve um websocket para receber atualizações de ficha de um personagem"""
+        await websocket.accept(subprotocol=subprotocol)
+        if character_id not in self.character_view_subscriptions:
+            self.character_view_subscriptions[character_id] = []
+        self.character_view_subscriptions[character_id].append(websocket)
+
+    def unsubscribe_from_character_view(self, websocket: WebSocket, character_id: int):
+        if character_id in self.character_view_subscriptions:
+            try:
+                self.character_view_subscriptions[character_id].remove(websocket)
+            except ValueError:
+                pass
+
+    async def broadcast_character_update(self, character_id: int, data: dict):
+        """Emite atualizações de ficha para inscritos"""
+        if character_id not in self.character_view_subscriptions:
+            return
+
+        message = {
+            "type": "character_update",
+            "character_id": character_id,
+            "data": data,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+        message_json = json.dumps(message)
+        disconnected_sockets: List[WebSocket] = []
+
+        for websocket in self.character_view_subscriptions[character_id]:
+            try:
+                await websocket.send_text(message_json)
+            except Exception:
+                logging.exception("Failed to broadcast character update to character %s", character_id)
+                disconnected_sockets.append(websocket)
+
+        for ws in disconnected_sockets:
+            if ws in self.character_view_subscriptions[character_id]:
+                self.character_view_subscriptions[character_id].remove(ws)
     
     async def broadcast_to_user(
         self, 

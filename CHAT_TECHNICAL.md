@@ -11,7 +11,7 @@ O sistema de chat em tempo real foi implementado com as seguintes característic
 - ✅ Sanitização de HTML
 - ✅ Limite de tamanho de mensagem (1-1000 chars)
 
-### ⚡ Funcionalidades
+###  Funcionalidades
 - ✅ WebSocket para comunicação em tempo real
 - ✅ Histórico de mensagens (últimas 20 ao conectar)
 - ✅ Broadcast automático para todos conectados
@@ -19,7 +19,7 @@ O sistema de chat em tempo real foi implementado com as seguintes característic
 - ✅ Persistência em banco de dados
 - ✅ Gerenciamento de conexões
 
-### 📊 Dados
+###  Dados
 - ✅ Armazenamento de mensagens
 - ✅ Timestamps automáticos
 - ✅ Referência ao usuário

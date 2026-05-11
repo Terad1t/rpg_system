@@ -54,7 +54,7 @@ export default function PlayerInventory({ characterId: characterIdProp = null, i
   if (!inventoryProp && error) return <div className="text-red-500">Erro: {error}</div>
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="w-full space-y-6">
       <Card title="Inventário" className="border border-white/10 bg-[#08111f]/90">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleInventory.map((item) => (

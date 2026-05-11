@@ -50,6 +50,12 @@ class CharacterUpdateByMaster(BaseModel):
     classe_id: Optional[int] = None
     user_id: Optional[int] = None
     current_map_id: Optional[int] = None
+    hp: Optional[int] = None
+    max_hp: Optional[int] = None
+    mana: Optional[int] = None
+    max_mana: Optional[int] = None
+    buffs: Optional[str] = None
+    debuffs: Optional[str] = None
 
     @field_validator("tipo")
     def normalize_tipo_opt(cls, v):
@@ -73,9 +79,10 @@ class CharacterUpdateByMaster(BaseModel):
 
 
 class CharacterUpdateByPlayer(BaseModel):
-    """Atualização pelo Player (apenas codinome e descrição)"""
+    """Atualização pelo Player (codinome, descrição e portrait)"""
     codename: Optional[str] = Field(None, min_length=1, max_length=50)
     description: Optional[str] = Field(None, max_length=2000)
+    portrait: Optional[str] = Field(None, max_length=2000)
 
 
 # ========== SCHEMAS DE LEITURA ==========
@@ -90,6 +97,13 @@ class CharacterRead(BaseModel):
     classe_id: int
     codename: Optional[str] = None
     description: Optional[str] = None
+    portrait: Optional[str] = None
+    hp: Optional[int] = None
+    max_hp: Optional[int] = None
+    mana: Optional[int] = None
+    max_mana: Optional[int] = None
+    buffs: Optional[str] = None
+    debuffs: Optional[str] = None
     user_id: Optional[int] = None
     current_map_id: Optional[int] = None
 

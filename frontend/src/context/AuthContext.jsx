@@ -23,7 +23,11 @@ export function AuthProvider({ children }) {
   const login = async (login, password, pin) => {
     try {
       setError(null)
+      console.log('[AuthContext] login() START - credentials:', { login, password: '***', pin: '***' })
+      
       const response = await api.post('/api/auth/login', { login, password, pin })
+      console.log('[AuthContext] api.post response received:', response.status, response.data)
+      
       const { access_token, user_id, role } = response.data
       const userData = { id: user_id, login, role }
       
@@ -32,9 +36,11 @@ export function AuthProvider({ children }) {
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
       
       setUser(userData)
+      console.log('[AuthContext] login() SUCCESS - user:', userData)
       return userData
     } catch (err) {
-      const message = err.response?.data?.detail || 'Erro ao fazer login'
+      console.error('[AuthContext] login() FAILED:', err.message, 'Status:', err.response?.status)
+      const message = err.response?.data?.detail || err.message || 'Erro ao fazer login'
       setError(message)
       throw err
     }

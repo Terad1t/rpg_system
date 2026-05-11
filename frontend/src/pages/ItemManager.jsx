@@ -31,7 +31,7 @@ export default function ItemManager() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [itemsResponse, charactersResponse] = await Promise.all([api.get('/items/'), api.get('/characters/')])
+      const [itemsResponse, charactersResponse] = await Promise.all([api.get('/api/items/'), api.get('/api/characters/')])
       setItems(itemsResponse.data || [])
       setCharacters(charactersResponse.data || [])
       setError(null)
@@ -77,10 +77,10 @@ export default function ItemManager() {
       }
 
       if (editingId) {
-        await api.put(`/items/${editingId}`, payload)
+        await api.put(`/api/items/${editingId}`, payload)
         setMessage({ type: 'success', text: 'Item atualizado com sucesso.' })
       } else {
-        await api.post('/items/', payload)
+        await api.post('/api/items/', payload)
         setMessage({ type: 'success', text: 'Item criado com sucesso.' })
       }
 
@@ -108,7 +108,7 @@ export default function ItemManager() {
     if (!window.confirm('Tem certeza que deseja deletar este item?')) return
 
     try {
-      await api.delete(`/items/${itemId}`)
+      await api.delete(`/api/items/${itemId}`)
       setMessage({ type: 'success', text: 'Item removido com sucesso.' })
       await loadData()
     } catch (err) {
@@ -125,7 +125,7 @@ export default function ItemManager() {
     }
 
     try {
-      await api.post(`/characters/${assignCharacterId}/inventory/add`, null, {
+      await api.post(`/api/characters/${assignCharacterId}/inventory/add`, null, {
         params: {
           item_id: assignItemId,
           quantity: Math.max(1, Number(assignQuantity) || 1),

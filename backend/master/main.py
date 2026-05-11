@@ -1,5 +1,6 @@
 # main.py
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from .controllers.player_controller import router as player_router
 from .controllers.character_controller import router as character_router
@@ -24,6 +25,7 @@ from .utils.schema_migration import ensure_schema_updates
 from .database.connection import Base, engine
 import sys
 import os
+import asyncio
 
 # Adiciona o caminho para importar o módulo player
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,6 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Importa rotas do player
 from ..player.controllers.player_character_controller import router as player_character_router
 from ..player.controllers.player_panel_controller import router as player_panel_router
+from .controllers.master_character_controller import router as master_character_router
 
 # Importa todos os modelos para criar as tabelas
 from .models import (
@@ -56,6 +59,7 @@ from .models import (
     character_request_model,
     player_notes_model,
     character_habilidade_model,
+    master_audit_model,
 )
 
 from .services.auth_services import initialize_master_if_not_exists
@@ -68,6 +72,16 @@ def _ensure_schema() -> None:
     Base.metadata.create_all(bind=engine)
     ensure_schema_updates()
 
+
+@app.on_event("startup")
+async def _start_background_tasks() -> None:
+    try:
+        from .utils.effects_manager import start_effects_loop
+        # spawn background task to clean up expired effects
+        asyncio.create_task(start_effects_loop())
+    except Exception:
+        pass
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -76,6 +90,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+os.makedirs(static_dir, exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # ========== Authentication Routes ==========
 app.include_router(auth_router, prefix="/api")
@@ -109,3 +127,4 @@ app.include_router(websocket_router)
 # ========== Player Routes ==========
 app.include_router(player_character_router, prefix="/api")
 app.include_router(player_panel_router, prefix="/api")
+app.include_router(master_character_router, prefix="/api")

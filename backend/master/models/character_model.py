@@ -17,6 +17,15 @@ class Character(Base):
     # Dados editáveis pelo player (se for player)
     codename = Column(String)  # Codinome do personagem (editável)
     description = Column(String)  # Descrição/lore do personagem (editável)
+    portrait = Column(String, nullable=True)  # Foto/portrait do personagem
+    hp = Column(Integer, nullable=True)
+    max_hp = Column(Integer, nullable=True)
+    mana = Column(Integer, nullable=True)
+    max_mana = Column(Integer, nullable=True)
+    buffs = Column(String, nullable=True)
+    debuffs = Column(String, nullable=True)
+    # JSON string com controle de visibilidade definido pelo mestre. Ex: '{"show_hp": false, "public_fields": ["codename","race"]}'
+    visibility = Column(String, nullable=True)
     
     # Relacionamento com usuário (opcional, para players)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)

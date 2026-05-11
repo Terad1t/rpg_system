@@ -52,7 +52,7 @@ const MOCK_SKILLS = [
 
 export default function PlayerSkills() {
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="w-full space-y-6">
       <div className="space-y-4">
         {MOCK_SKILLS.map((skill) => (
           <Card key={skill.id} className="border border-white/10 bg-[#08111f]/90 hover:shadow-xl">

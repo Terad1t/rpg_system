@@ -101,3 +101,45 @@ async def websocket_user_updates_endpoint(
     except Exception:
         logging.exception("Unhandled user updates websocket error for user %s", user_id)
         inventory_manager.unsubscribe_from_user_updates(websocket, user_id)
+
+
+@router.websocket("/character-view/{character_id}")
+async def websocket_character_view_endpoint(
+    websocket: WebSocket,
+    character_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    WebSocket para receber atualizações de ficha de um personagem em tempo real
+    Uso: ws://localhost:8000/ws/character-view/{character_id}?token={auth_token}
+    """
+    token = get_websocket_token(websocket)
+    payload = decode_token(token) if token else None
+    if not payload:
+        await websocket.close(code=1008)
+        return
+
+    current_user_id = int(payload["user_id"])
+    current_role = payload.get("role")
+
+    user = get_user_by_id(db, current_user_id)
+    if not user or not user.is_active:
+        await websocket.close(code=1008)
+        return
+
+    # Permissões: master pode assinar qualquer ficha; players apenas a sua própria ou fichas públicas/visíveis (controlado no envio)
+    # Para simplificar a assinatura, permitimos a conexão e deixamos o servidor filtrar o que é enviado.
+    await inventory_manager.subscribe_to_character_view(
+        websocket,
+        character_id,
+        subprotocol="bearer" if websocket.headers.get("sec-websocket-protocol") else None,
+    )
+
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        inventory_manager.unsubscribe_from_character_view(websocket, character_id)
+    except Exception:
+        logging.exception("Unhandled character view websocket error for character %s", character_id)
+        inventory_manager.unsubscribe_from_character_view(websocket, character_id)

@@ -10,6 +10,14 @@ def get_character_by_id(db: Session, character_id: int):
 
 def create_character(db: Session, character: CharacterCreateByMaster):
     db_character = Character(**character.model_dump())
+    if db_character.hp is None:
+        db_character.hp = 0
+    if db_character.max_hp is None:
+        db_character.max_hp = 0
+    if db_character.mana is None:
+        db_character.mana = 0
+    if db_character.max_mana is None:
+        db_character.max_mana = 0
     db.add(db_character)
     db.commit()
     db.refresh(db_character)

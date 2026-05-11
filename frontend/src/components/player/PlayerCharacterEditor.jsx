@@ -8,11 +8,13 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
   const [formData, setFormData] = useState({
     codename: character.codename || '',
     description: character.description || '',
+    portrait: character.portrait || '',
   })
   
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [uploadingPortrait, setUploadingPortrait] = useState(false)
 
   const validateForm = () => {
     const newErrors = {}
@@ -23,6 +25,10 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
     
     if (formData.description.length > 500) {
       newErrors.description = 'Descrição não pode ter mais de 500 caracteres'
+    }
+
+    if (formData.portrait.length > 2000) {
+      newErrors.portrait = 'URL da imagem não pode ter mais de 2000 caracteres'
     }
     
     setErrors(newErrors)
@@ -60,6 +66,7 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
         {
           codename: formData.codename || null,
           description: formData.description || null,
+          portrait: formData.portrait || null,
         }
       )
       
@@ -76,6 +83,31 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
       setErrors({ submit: errorMessage })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePortraitUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingPortrait(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const response = await api.post(`/api/my-characters/${character.id}/portrait`, form, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+      const uploadedPortrait = response?.data?.portrait || ''
+      setFormData((prev) => ({ ...prev, portrait: uploadedPortrait }))
+      setSuccessMessage('Portrait enviado com sucesso!')
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || 'Erro ao fazer upload do portrait'
+      setErrors((prev) => ({ ...prev, submit: errorMessage }))
+    } finally {
+      setUploadingPortrait(false)
     }
   }
 
@@ -99,6 +131,47 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
           <div>
             <label className="text-xs uppercase tracking-[0.35em] text-slate-400">Nível (imutável)</label>
             <p className="text-lg font-bold text-white">{character.level}</p>
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="portrait" className="block text-xs uppercase tracking-[0.35em] text-slate-400 mb-2">
+            Portrait / Foto
+          </label>
+          <Input
+            id="portrait"
+            name="portrait"
+            type="text"
+            placeholder="URL da foto do personagem"
+            value={formData.portrait}
+            onChange={handleChange}
+            maxLength={2000}
+            disabled={loading}
+          />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs text-red-500">
+              {errors.portrait}
+            </span>
+            <span className="text-xs text-secondary">
+              {formData.portrait.length}/2000
+            </span>
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            <label className="inline-flex cursor-pointer items-center gap-2 border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.25em] text-slate-300 hover:border-cyan-400/50 hover:text-white">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePortraitUpload}
+                disabled={loading || uploadingPortrait}
+                className="hidden"
+              />
+              {uploadingPortrait ? 'Enviando...' : 'Upload de arquivo'}
+            </label>
+            {formData.portrait && (
+              <a href={formData.portrait} target="_blank" rel="noreferrer" className="text-xs text-cyan-200 underline">
+                Ver imagem
+              </a>
+            )}
           </div>
         </div>
 
@@ -181,6 +254,7 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
               setFormData({
                 codename: character.codename || '',
                 description: character.description || '',
+                portrait: character.portrait || '',
               })
               setErrors({})
               setSuccessMessage('')

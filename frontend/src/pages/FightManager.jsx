@@ -33,8 +33,8 @@ export default function FightManager() {
     try {
       setLoading(true)
       const [fightsResponse, statsResponse] = await Promise.all([
-        api.get('/fights/'),
-        api.get('/fights/stats'),
+          api.get('/api/fights/'),
+          api.get('/api/fights/stats'),
       ])
       const fightList = fightsResponse.data || []
       setFights(fightList)
@@ -65,7 +65,7 @@ export default function FightManager() {
   const createFight = async (event) => {
     event.preventDefault()
     try {
-      await api.post('/fights/', fightForm)
+         await api.post('/api/fights/', fightForm)
       setMessage({ type: 'success', text: 'Fight salva com sucesso.' })
       setFightForm(EMPTY_FIGHT)
       await loadData()
@@ -78,7 +78,7 @@ export default function FightManager() {
     event.preventDefault()
     if (!selectedFight) return
     try {
-      await api.put(`/fights/${selectedFight.id}`, fightForm)
+      await api.put(`/api/fights/${selectedFight.id}`, fightForm)
       setMessage({ type: 'success', text: 'Fight atualizada com sucesso.' })
       await loadData()
     } catch (error) {
@@ -89,7 +89,7 @@ export default function FightManager() {
   const removeFight = async (fightId) => {
     if (!window.confirm('Remover esta fight?')) return
     try {
-      await api.delete(`/fights/${fightId}`)
+      await api.delete(`/api/fights/${fightId}`)
       setMessage({ type: 'success', text: 'Fight removida.' })
       setSelectedFightId(null)
       await loadData()
@@ -102,7 +102,7 @@ export default function FightManager() {
     event.preventDefault()
     if (!selectedFight) return
     try {
-      await api.post(`/fights/${selectedFight.id}/entries`, {
+      await api.post(`/api/fights/${selectedFight.id}/entries`, {
         ...entryForm,
         damage: Math.max(0, Number(entryForm.damage) || 0),
         healing: Math.max(0, Number(entryForm.healing) || 0),
@@ -118,7 +118,7 @@ export default function FightManager() {
   const removeEntry = async (entryId) => {
     if (!selectedFight || !window.confirm('Remover esta entrada?')) return
     try {
-      await api.delete(`/fights/${selectedFight.id}/entries/${entryId}`)
+      await api.delete(`/api/fights/${selectedFight.id}/entries/${entryId}`)
       setMessage({ type: 'success', text: 'Entrada removida.' })
       await loadData()
     } catch (error) {

@@ -24,6 +24,8 @@ def update_player_character(db: Session, character_id: int, user_id: int, charac
             db_character.codename = character_update.codename
         if character_update.description is not None:
             db_character.description = character_update.description
+        if character_update.portrait is not None:
+            db_character.portrait = character_update.portrait
 
         db.commit()
         db.refresh(db_character)

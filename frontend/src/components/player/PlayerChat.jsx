@@ -1,44 +1,58 @@
 import { useState, useEffect, useRef } from 'react'
-import { Card, Input, Button } from '../common'
+import { Card, Button } from '../common'
 import websocket from '../../services/websocket'
 import { useAuth } from '../../context/AuthContext'
 
-const MOCK_MESSAGES = [
-  { id: 1, author: 'Aragorn', message: 'Olá pessoal!', timestamp: '10:30', isOwn: false },
-  { id: 2, author: 'Você', message: 'Oi! Como vai?', timestamp: '10:31', isOwn: true },
-  { id: 3, author: 'Legolas', message: 'Tudo bem, e vocês?', timestamp: '10:32', isOwn: false },
-]
+function formatTimestamp(createdAt) {
+  if (!createdAt) {
+    return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  }
 
-export default function PlayerChat() {
+  const date = new Date(createdAt)
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function normalizeMessage(data, userId) {
+  return {
+    id: data.id ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    author: data.username || 'Sistema',
+    message: data.message || '',
+    timestamp: formatTimestamp(data.created_at),
+    isOwn: data.user_id === userId,
+    messageType: data.message_type || 'message',
+  }
+}
+
+export default function PlayerChat({ compact = false, defaultCollapsed = false, className = '' }) {
   const { user } = useAuth()
-  const [messages, setMessages] = useState(MOCK_MESSAGES)
+  const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [isConnected, setIsConnected] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
-    // Só conecta se user existir, for player e token presente
+    setIsCollapsed(defaultCollapsed)
+  }, [defaultCollapsed])
+
+  useEffect(() => {
     const token = localStorage.getItem('token')
     if (user && user.role === 'player' && token) {
-      console.log('[PlayerChat] Tentando conectar websocket com token:', token)
-      websocket.connect(token).then(() => {
-        setIsConnected(true)
-        console.log('[PlayerChat] WebSocket conectado com sucesso')
-      }).catch((error) => {
-        console.error('[PlayerChat] Erro ao conectar ao WebSocket:', error)
-        setIsConnected(false)
-      })
+      websocket.connect(token)
+        .then(() => {
+          setIsConnected(true)
+        })
+        .catch((error) => {
+          console.error('[PlayerChat] Erro ao conectar ao WebSocket:', error)
+          setIsConnected(false)
+        })
 
-      // Listener para novas mensagens
       const unsubscribe = websocket.on('message', (data) => {
-        const newMsg = {
-          id: messages.length + 1,
-          author: data.username || 'Desconhecido',
-          message: data.message,
-          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-          isOwn: data.user_id === user?.id,
-        }
-        setMessages((prev) => [...prev, newMsg])
+        setMessages((prev) => [...prev, normalizeMessage(data, user?.id)])
       })
 
       return () => {
@@ -62,7 +76,7 @@ export default function PlayerChat() {
   }, [messages])
 
   const handleSendMessage = () => {
-    if (newMessage.trim()) {
+    if (newMessage.trim() && isConnected) {
       websocket.send({
         message: newMessage,
       })
@@ -77,67 +91,118 @@ export default function PlayerChat() {
     }
   }
 
+  if (compact && isCollapsed) {
+    return (
+      <button
+        type="button"
+        onClick={() => setIsCollapsed(false)}
+        className={`fixed bottom-4 right-4 z-40 rounded-full border border-cyan-400/40 bg-[#07111fe6] px-4 py-3 text-xs font-semibold uppercase tracking-[0.25em] text-cyan-200 shadow-[0_0_24px_rgba(56,189,248,0.15)] backdrop-blur ${className}`}
+      >
+        Chat
+      </button>
+    )
+  }
+
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-200px)] flex flex-col">
-      <Card className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-dark-border mb-4">
-          <h3 className="text-lg font-bold text-orange-500">Chat Global</h3>
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-3 h-3 rounded-full ${
-                isConnected ? 'bg-green-500' : 'bg-red-500'
-              }`}
-            />
-            <span className="text-sm text-secondary">
-              {isConnected ? 'Conectado' : 'Desconectado'}
-            </span>
+    <div
+      className={compact
+        ? `fixed bottom-4 right-4 left-4 z-40 sm:left-auto sm:w-[24rem] ${className}`
+        : `mx-auto flex h-[calc(100vh-200px)] w-full max-w-4xl flex-col ${className}`
+      }
+    >
+      <Card className="flex h-full flex-col border border-white/10 bg-[#08111f]/95 shadow-[0_0_32px_rgba(0,0,0,0.28)]">
+        <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-200/75">Comunicação</p>
+            <h3 className="mt-2 text-lg font-bold text-white">Chat Global</h3>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className={`h-3 w-3 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-red-500'}`} />
+              <span className="text-xs uppercase tracking-[0.25em] text-slate-300">
+                {isConnected ? 'Conectado' : 'Offline'}
+              </span>
+            </div>
+            {compact && (
+              <button
+                type="button"
+                onClick={() => setIsCollapsed(true)}
+                className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.25em] text-slate-300 transition hover:border-cyan-400/40 hover:text-white"
+              >
+                Minimizar
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-2">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-xs lg:max-w-md rounded-lg px-4 py-2 ${
-                  msg.isOwn
-                    ? 'bg-orange-500 text-white rounded-br-none'
-                    : 'bg-dark-secondary border border-dark-border text-white rounded-bl-none'
-                }`}
-              >
-                {!msg.isOwn && (
-                  <p className="text-xs font-semibold text-orange-400 mb-1">
-                    {msg.author}
-                  </p>
-                )}
-                <p className="text-sm">{msg.message}</p>
-                <p className="text-xs opacity-70 mt-1 text-right">{msg.timestamp}</p>
+        <div className="flex-1 space-y-3 overflow-y-auto pr-2">
+          {messages.length === 0 ? (
+            <div className="flex h-full min-h-0 items-center justify-center rounded-lg border border-dashed border-white/10 bg-white/5 p-6 text-center">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-slate-400">Chat pronto</p>
+                <p className="mt-2 text-sm text-slate-300">
+                  Mensagens reais aparecerão aqui assim que o websocket entregar o histórico.
+                </p>
               </div>
             </div>
-          ))}
+          ) : (
+            messages.map((msg) => {
+              const isSystem = msg.messageType === 'system' || msg.messageType === 'error'
+              const isHistory = msg.messageType === 'history'
+
+              return (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'} ${isSystem ? 'justify-center' : ''}`}
+                >
+                  <div
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                      isSystem
+                        ? 'border border-white/10 bg-white/5 text-center text-slate-200'
+                        : msg.isOwn
+                          ? 'rounded-br-sm bg-cyan-500/20 text-white'
+                          : isHistory
+                            ? 'rounded-bl-sm border border-white/10 bg-[#0c1528] text-white'
+                            : 'rounded-bl-sm border border-white/10 bg-[#0c1528] text-white'
+                    }`}
+                  >
+                    {!msg.isOwn && !isSystem && (
+                      <p className="mb-1 text-[11px] uppercase tracking-[0.3em] text-cyan-200/80">
+                        {msg.author}
+                      </p>
+                    )}
+                    {isSystem && (
+                      <p className="mb-1 text-[11px] uppercase tracking-[0.3em] text-orange-200">
+                        Sistema
+                      </p>
+                    )}
+                    <p className="text-sm leading-6 text-slate-100">{msg.message}</p>
+                    <p className="mt-2 text-[11px] uppercase tracking-[0.25em] text-slate-400">
+                      {msg.timestamp}
+                    </p>
+                  </div>
+                </div>
+              )
+            })
+          )}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
-        <div className="flex gap-3">
+        <div className="mt-4 flex gap-3 border-t border-white/10 pt-4">
           <textarea
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Digite sua mensagem... (Enter para enviar)"
-            className="flex-1 bg-dark border border-dark-border rounded-lg px-4 py-2 text-white placeholder-secondary focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
-            rows="3"
+            onKeyDown={handleKeyPress}
+            placeholder="Digite sua mensagem..."
+            className="flex-1 resize-none rounded-xl border border-white/10 bg-[#050b18] px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
+            rows={compact ? 2 : 3}
             disabled={!isConnected}
           />
           <Button
             variant="primary"
             onClick={handleSendMessage}
             disabled={!isConnected || !newMessage.trim()}
-            className="self-end"
+            className="self-end whitespace-nowrap shadow-[0_0_18px_rgba(56,189,248,0.18)]"
           >
             Enviar
           </Button>

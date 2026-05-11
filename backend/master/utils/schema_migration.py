@@ -34,11 +34,31 @@ def ensure_schema_updates() -> None:
         return
 
     with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS master_audit (
+                id INTEGER PRIMARY KEY,
+                master_id INTEGER NOT NULL,
+                character_id INTEGER NOT NULL,
+                action TEXT NOT NULL,
+                payload TEXT,
+                created_at DATETIME
+            )
+            """
+        )
         _ensure_column(connection, "itens", "buffs TEXT")
         _ensure_column(connection, "itens", "nerfs TEXT")
         _ensure_column(connection, "itens", "quantity INTEGER NOT NULL DEFAULT 1")
         _ensure_column(connection, "racas", "image TEXT")
         _ensure_column(connection, "characters", "current_map_id INTEGER")
+        _ensure_column(connection, "characters", "portrait TEXT")
+        _ensure_column(connection, "characters", "hp INTEGER")
+        _ensure_column(connection, "characters", "max_hp INTEGER")
+        _ensure_column(connection, "characters", "mana INTEGER")
+        _ensure_column(connection, "characters", "max_mana INTEGER")
+        _ensure_column(connection, "characters", "buffs TEXT")
+        _ensure_column(connection, "characters", "debuffs TEXT")
+        _ensure_column(connection, "characters", "visibility TEXT")
         _ensure_column(connection, "maps", "region_id INTEGER")
         _ensure_column(connection, "maps", "country_id INTEGER")
         _ensure_column(connection, "maps", "village_id INTEGER")
