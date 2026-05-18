@@ -92,7 +92,9 @@ def approve_request(db: Session, request_id: int, approval_data: Dict, master_us
     db.commit()
     db.refresh(character)
 
-    # Apply attributes with race bonuses
+    # Initialize attributes using character_attribute_service
+    from ..services.character_attribute_service import initialize_character_attributes
+
     base_attrs = {
         "hp": approval_data.get("hp", 0),
         "vigor": approval_data.get("vigor", 0),
@@ -104,26 +106,10 @@ def approve_request(db: Session, request_id: int, approval_data: Dict, master_us
         "occultism": approval_data.get("occultism", 0),
     }
 
-    # Investigation is an enumerated string → map to integer
     investigation_raw = approval_data.get("investigation")
     investigation_value = INVESTIGATION_MAP.get(investigation_raw, 0)
 
-    # Gather race bonuses
-    bonuses = db.query(RacaBonus).filter(RacaBonus.raca_id == character.raca_id).all()
-    bonus_map = {}
-    for b in bonuses:
-        bonus_map.setdefault(b.attribute_name, 0)
-        bonus_map[b.attribute_name] += b.bonus
-
-    # Create Attribute rows
-    for name, base in base_attrs.items():
-        final_value = base + bonus_map.get(name, 0)
-        attr = Attribute(character_id=character.id, name=name, value=final_value)
-        db.add(attr)
-
-    # investigation attribute
-    inv_final = investigation_value + bonus_map.get("investigation", 0)
-    db.add(Attribute(character_id=character.id, name="investigation", value=inv_final))
+    initialize_character_attributes(db, character.id, base_attrs, investigation_value, character.raca_id)
 
     # finalize request
     req.status = "approved"

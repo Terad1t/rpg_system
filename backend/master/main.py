@@ -10,6 +10,7 @@ from .controllers.country_controller import router as country_router
 from .controllers.village_controller import router as village_router
 from .controllers.map_controller import router as map_router
 from .controllers.character_request_controller import router as character_request_router
+from .controllers.character_attribute_controller import router as character_attribute_router
 from .controllers.item_controller import router as item_router
 from .controllers.websocket_controller import router as websocket_router
 from .controllers.raca_controller import router as raca_router
@@ -57,7 +58,9 @@ from .models import (
     inventory_log_model,
     map_model,
     character_request_model,
+    character_attribute_model,
     player_notes_model,
+    attribute_distribution_log_model,
     character_habilidade_model,
     master_audit_model,
 )
@@ -114,6 +117,7 @@ app.include_router(village_router, prefix="/api")
 app.include_router(map_router, prefix="/api")
 app.include_router(character_request_router, prefix="/api")
 app.include_router(item_router, prefix="/api")
+app.include_router(character_attribute_router, prefix="/api")
 app.include_router(raca_router, prefix="/api")
 app.include_router(classe_router, prefix="/api")
 app.include_router(player_notes_router, prefix="/api")
