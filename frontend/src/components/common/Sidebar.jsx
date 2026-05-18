@@ -26,6 +26,7 @@ const MASTER_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: <IconChart /> },
   { id: 'players', label: 'Jogadores', icon: <IconUsers /> },
   { id: 'characters', label: 'Personagens', icon: <IconUser /> },
+  { id: 'requests', label: 'Requisições', icon: <IconChat /> },
   { id: 'items', label: 'Itens', icon: <IconGem /> },
   { id: 'fight', label: 'Fight', icon: <IconSword /> },
   { id: 'races', label: 'Raças', icon: <IconTag /> },
@@ -34,7 +35,7 @@ const MASTER_TABS = [
   { id: 'map', label: 'Mapa', icon: <IconMap /> },
 ]
 
-export default function Sidebar({ activeTab, onTabChange, isMaster = false }) {
+export default function Sidebar({ activeTab, onTabChange, isMaster = false, badges = {} }) {
   const [isOpen, setIsOpen] = useState(false)
   const tabs = isMaster ? MASTER_TABS : PLAYER_TABS
 
@@ -97,6 +98,11 @@ export default function Sidebar({ activeTab, onTabChange, isMaster = false }) {
               />
               <span className="shrink-0">{tab.icon}</span>
               <span className="text-sm uppercase tracking-[0.25em]">{tab.label}</span>
+              {badges?.[tab.id] > 0 && (
+                <span className="ml-auto inline-flex items-center justify-center min-w-[28px] px-2 py-1 rounded-full bg-orange-500 text-white text-xs font-bold">
+                  {badges[tab.id]}
+                </span>
+              )}
             </button>
           ))}
         </nav>

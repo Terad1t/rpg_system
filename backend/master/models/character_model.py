@@ -24,6 +24,8 @@ class Character(Base):
     max_mana = Column(Integer, nullable=True)
     buffs = Column(String, nullable=True)
     debuffs = Column(String, nullable=True)
+    free_points = Column(Integer, default=0)
+    total_points_distributed = Column(Integer, default=0)
     # JSON string com controle de visibilidade definido pelo mestre. Ex: '{"show_hp": false, "public_fields": ["codename","race"]}'
     visibility = Column(String, nullable=True)
     

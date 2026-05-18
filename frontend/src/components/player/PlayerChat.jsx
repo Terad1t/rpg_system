@@ -16,10 +16,10 @@ function formatTimestamp(createdAt) {
   return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
-function normalizeMessage(data, userId) {
+function normalizeMessage(data, userId, identityLabel = '') {
   return {
     id: data.id ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    author: data.username || 'Sistema',
+    author: data.character_codename || data.username || identityLabel || 'Sistema',
     message: data.message || '',
     timestamp: formatTimestamp(data.created_at),
     isOwn: data.user_id === userId,
@@ -27,7 +27,15 @@ function normalizeMessage(data, userId) {
   }
 }
 
-export default function PlayerChat({ compact = false, defaultCollapsed = false, className = '' }) {
+export default function PlayerChat({
+  compact = false,
+  defaultCollapsed = false,
+  className = '',
+  identityLabel = '',
+  characterId = null,
+  embedded = false,
+  dock = 'right',
+}) {
   const { user } = useAuth()
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
@@ -42,7 +50,9 @@ export default function PlayerChat({ compact = false, defaultCollapsed = false, 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (user && user.role === 'player' && token) {
-      websocket.connect(token)
+      setMessages([])
+      const path = characterId ? `/api/chat/ws?character_id=${characterId}` : '/api/chat/ws'
+      websocket.connect(token, path)
         .then(() => {
           setIsConnected(true)
         })
@@ -52,7 +62,7 @@ export default function PlayerChat({ compact = false, defaultCollapsed = false, 
         })
 
       const unsubscribe = websocket.on('message', (data) => {
-        setMessages((prev) => [...prev, normalizeMessage(data, user?.id)])
+        setMessages((prev) => [...prev, normalizeMessage(data, user?.id, identityLabel)])
       })
 
       return () => {
@@ -69,7 +79,7 @@ export default function PlayerChat({ compact = false, defaultCollapsed = false, 
         console.warn('[PlayerChat] Token não encontrado no localStorage, não conectando ao websocket')
       }
     }
-  }, [user?.id, user?.role])
+  }, [characterId, identityLabel, user?.id, user?.role])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -79,6 +89,7 @@ export default function PlayerChat({ compact = false, defaultCollapsed = false, 
     if (newMessage.trim() && isConnected) {
       websocket.send({
         message: newMessage,
+        character_id: characterId,
       })
       setNewMessage('')
     }
@@ -96,9 +107,9 @@ export default function PlayerChat({ compact = false, defaultCollapsed = false, 
       <button
         type="button"
         onClick={() => setIsCollapsed(false)}
-        className={`fixed bottom-4 right-4 z-40 rounded-full border border-cyan-400/40 bg-[#07111fe6] px-4 py-3 text-xs font-semibold uppercase tracking-[0.25em] text-cyan-200 shadow-[0_0_24px_rgba(56,189,248,0.15)] backdrop-blur ${className}`}
+        className={`fixed bottom-4 z-50 rounded-full border border-cyan-400/40 bg-[#07111fe6] px-4 py-3 text-xs font-semibold uppercase tracking-[0.25em] text-cyan-200 shadow-[0_0_24px_rgba(56,189,248,0.15)] backdrop-blur ${dock === 'left' ? 'left-4' : 'right-4'} ${className}`}
       >
-        Chat
+        Chat {identityLabel ? `• ${identityLabel}` : ''}
       </button>
     )
   }
@@ -106,15 +117,24 @@ export default function PlayerChat({ compact = false, defaultCollapsed = false, 
   return (
     <div
       className={compact
-        ? `fixed bottom-4 right-4 left-4 z-40 sm:left-auto sm:w-[24rem] ${className}`
-        : `mx-auto flex h-[calc(100vh-200px)] w-full max-w-4xl flex-col ${className}`
+        ? `fixed bottom-4 z-50 left-4 right-4 sm:w-[24rem] ${dock === 'left' ? 'sm:left-4 sm:right-auto' : 'sm:left-auto sm:right-4'} ${className}`
+        : embedded
+          ? `flex h-full min-h-0 w-full flex-col ${className}`
+          : `mx-auto flex h-[calc(100vh-200px)] w-full max-w-4xl flex-col ${className}`
       }
     >
       <Card className="flex h-full flex-col border border-white/10 bg-[#08111f]/95 shadow-[0_0_32px_rgba(0,0,0,0.28)]">
         <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-4">
           <div>
             <p className="text-[11px] uppercase tracking-[0.35em] text-cyan-200/75">Comunicação</p>
-            <h3 className="mt-2 text-lg font-bold text-white">Chat Global</h3>
+            <h3 className="mt-2 text-lg font-bold text-white">
+              {identityLabel ? `Chat de ${identityLabel}` : 'Chat Global'}
+            </h3>
+            {identityLabel && (
+              <p className="mt-1 text-xs uppercase tracking-[0.3em] text-slate-400">
+                Personagem ativo: {identityLabel}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
@@ -129,7 +149,7 @@ export default function PlayerChat({ compact = false, defaultCollapsed = false, 
                 onClick={() => setIsCollapsed(true)}
                 className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.25em] text-slate-300 transition hover:border-cyan-400/40 hover:text-white"
               >
-                Minimizar
+                Fechar
               </button>
             )}
           </div>
@@ -193,9 +213,9 @@ export default function PlayerChat({ compact = false, defaultCollapsed = false, 
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder="Digite sua mensagem..."
+            placeholder={identityLabel ? `Falar como ${identityLabel}...` : 'Digite sua mensagem...'}
             className="flex-1 resize-none rounded-xl border border-white/10 bg-[#050b18] px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
-            rows={compact ? 2 : 3}
+            rows={compact || embedded ? 2 : 3}
             disabled={!isConnected}
           />
           <Button

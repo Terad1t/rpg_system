@@ -285,6 +285,23 @@ export default function MasterCharacterManager() {
     }
   }
 
+  const deleteCharacter = async () => {
+    if (!selectedCharacter) return
+    if (!window.confirm(`Tem certeza que deseja deletar "${selectedCharacter.name}"? Todos os players receberão uma notificação em tempo real.`)) return
+    
+    setSaving(true)
+    try {
+      await api.delete(`/api/characters/${selectedCharacter.id}`)
+      setMessage({ type: 'success', text: 'Personagem deletado. Notificação enviada aos players em tempo real.' })
+      setSelectedId(null)
+      await loadData()
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao deletar personagem' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading) {
     return <div className="text-sm uppercase tracking-[0.35em] text-slate-300">Carregando painel do mestre...</div>
   }
@@ -325,7 +342,7 @@ export default function MasterCharacterManager() {
 
       {error && <Card className="border border-red-500/40 bg-red-500/10 p-4 text-red-100">{error}</Card>}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
         <Card title="Lista de Personagens" className="border border-white/10 bg-[#08111f]/90">
           <div className="mb-4 grid gap-3 md:grid-cols-2">
             <input
@@ -425,6 +442,7 @@ export default function MasterCharacterManager() {
                 <div className="flex flex-wrap gap-3">
                   <Button type="submit" disabled={saving}>Salvar edição</Button>
                   <Button type="button" variant="ghost" onClick={createCharacter} disabled={saving}>Criar novo</Button>
+                  <Button type="button" variant="ghost" onClick={deleteCharacter} disabled={saving} className="border-red-500/30 hover:bg-red-500/10 hover:border-red-500/60">Deletar</Button>
                 </div>
               </form>
             ) : (
@@ -511,41 +529,44 @@ export default function MasterCharacterManager() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-4">
-                  <div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="flex flex-col">
                     <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">HP delta</label>
-                    <div className="flex items-center gap-2">
-                      <input type="number" value={quickAction.hp} onChange={(e) => setQuickAction((prev) => ({ ...prev, hp: e.target.value }))} className="flex-1 border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none" placeholder="-10 ou 20" />
+                    <div className="flex items-center gap-3 flex-1">
+                      <input type="number" value={quickAction.hp} onChange={(e) => setQuickAction((prev) => ({ ...prev, hp: e.target.value }))} className="flex-1 border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none text-lg" placeholder="-10 ou 20" />
                       <div className="flex flex-col gap-2">
-                        <button type="button" onClick={() => applyHpDelta(1)} className="px-2 py-1 text-sm border border-white/10 bg-white/5">+1</button>
-                        <button type="button" onClick={() => applyHpDelta(5)} className="px-2 py-1 text-sm border border-white/10 bg-white/5">+5</button>
+                        <button type="button" onClick={() => applyHpDelta(1)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">+1</button>
+                        <button type="button" onClick={() => applyHpDelta(5)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">+5</button>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <button type="button" onClick={() => applyHpDelta(-1)} className="px-2 py-1 text-sm border border-white/10 bg-white/5">-1</button>
-                        <button type="button" onClick={() => applyHpDelta(-5)} className="px-2 py-1 text-sm border border-white/10 bg-white/5">-5</button>
+                        <button type="button" onClick={() => applyHpDelta(-1)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">-1</button>
+                        <button type="button" onClick={() => applyHpDelta(-5)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">-5</button>
                       </div>
                     </div>
                   </div>
-                  <div>
+                  <div className="flex flex-col">
                     <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">Mana delta</label>
-                    <div className="flex items-center gap-2">
-                      <input type="number" value={quickAction.mana} onChange={(e) => setQuickAction((prev) => ({ ...prev, mana: e.target.value }))} className="flex-1 border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none" placeholder="-5 ou 5" />
+                    <div className="flex items-center gap-3 flex-1">
+                      <input type="number" value={quickAction.mana} onChange={(e) => setQuickAction((prev) => ({ ...prev, mana: e.target.value }))} className="flex-1 border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none text-lg" placeholder="-5 ou 5" />
                       <div className="flex flex-col gap-2">
-                        <button type="button" onClick={() => applyManaDelta(1)} className="px-2 py-1 text-sm border border-white/10 bg-white/5">+1</button>
-                        <button type="button" onClick={() => applyManaDelta(5)} className="px-2 py-1 text-sm border border-white/10 bg-white/5">+5</button>
+                        <button type="button" onClick={() => applyManaDelta(1)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">+1</button>
+                        <button type="button" onClick={() => applyManaDelta(5)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">+5</button>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <button type="button" onClick={() => applyManaDelta(-1)} className="px-2 py-1 text-sm border border-white/10 bg-white/5">-1</button>
-                        <button type="button" onClick={() => applyManaDelta(-5)} className="px-2 py-1 text-sm border border-white/10 bg-white/5">-5</button>
+                        <button type="button" onClick={() => applyManaDelta(-1)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">-1</button>
+                        <button type="button" onClick={() => applyManaDelta(-5)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">-5</button>
                       </div>
                     </div>
                   </div>
-                  <div>
-                    <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">Buffs</label>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="flex flex-col">
+                    <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">Buffs atuais</label>
                     <input value={quickAction.buffs} onChange={(e) => setQuickAction((prev) => ({ ...prev, buffs: e.target.value }))} className="w-full border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none" placeholder="ex: Shield, Haste" />
                   </div>
-                  <div>
-                    <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">Debuffs</label>
+                  <div className="flex flex-col">
+                    <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">Debuffs atuais</label>
                     <input value={quickAction.debuffs} onChange={(e) => setQuickAction((prev) => ({ ...prev, debuffs: e.target.value }))} className="w-full border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none" placeholder="ex: Poison, Slow" />
                   </div>
                 </div>
@@ -553,25 +574,25 @@ export default function MasterCharacterManager() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">Adicionar buff</label>
-                    <div className="flex gap-2">
-                      <input value={quickAction.addBuff} onChange={(e) => setQuickAction((prev) => ({ ...prev, addBuff: e.target.value }))} className="w-full border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none" placeholder="ex: Bless" />
-                      <input type="number" min="1" value={quickAction.buffDuration} onChange={(e) => setQuickAction((prev) => ({ ...prev, buffDuration: e.target.value }))} className="w-32 border border-white/10 bg-[#0c1528] px-3 py-3 text-white outline-none" placeholder="seg" />
+                      <div className="flex gap-3">
+                        <input value={quickAction.addBuff} onChange={(e) => setQuickAction((prev) => ({ ...prev, addBuff: e.target.value }))} className="flex-1 border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none" placeholder="Nome do buff" />
+                        <input type="number" min="1" value={quickAction.buffDuration} onChange={(e) => setQuickAction((prev) => ({ ...prev, buffDuration: e.target.value }))} className="w-24 border border-white/10 bg-[#0c1528] px-3 py-3 text-white outline-none text-center" placeholder="s" />
                     </div>
                   </div>
                   <div>
                     <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">Adicionar debuff</label>
-                    <div className="flex gap-2">
-                      <input value={quickAction.addDebuff} onChange={(e) => setQuickAction((prev) => ({ ...prev, addDebuff: e.target.value }))} className="w-full border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none" placeholder="ex: Poison" />
-                      <input type="number" min="1" value={quickAction.debuffDuration} onChange={(e) => setQuickAction((prev) => ({ ...prev, debuffDuration: e.target.value }))} className="w-32 border border-white/10 bg-[#0c1528] px-3 py-3 text-white outline-none" placeholder="seg" />
+                      <div className="flex gap-3">
+                        <input value={quickAction.addDebuff} onChange={(e) => setQuickAction((prev) => ({ ...prev, addDebuff: e.target.value }))} className="flex-1 border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none" placeholder="Nome do debuff" />
+                        <input type="number" min="1" value={quickAction.debuffDuration} onChange={(e) => setQuickAction((prev) => ({ ...prev, debuffDuration: e.target.value }))} className="w-24 border border-white/10 bg-[#0c1528] px-3 py-3 text-white outline-none text-center" placeholder="s" />
                     </div>
                   </div>
                   <div>
                     <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">Remover buff (nome)</label>
-                    <input value={quickAction.removeBuff} onChange={(e) => setQuickAction((prev) => ({ ...prev, removeBuff: e.target.value }))} className="w-full border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none" placeholder="ex: Bless" />
+                      <input value={quickAction.removeBuff} onChange={(e) => setQuickAction((prev) => ({ ...prev, removeBuff: e.target.value }))} className="w-full border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none" placeholder="Nome do buff a remover" />
                   </div>
                   <div>
                     <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">Remover debuff (nome)</label>
-                    <input value={quickAction.removeDebuff} onChange={(e) => setQuickAction((prev) => ({ ...prev, removeDebuff: e.target.value }))} className="w-full border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none" placeholder="ex: Poison" />
+                      <input value={quickAction.removeDebuff} onChange={(e) => setQuickAction((prev) => ({ ...prev, removeDebuff: e.target.value }))} className="w-full border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none" placeholder="Nome do debuff a remover" />
                   </div>
                 </div>
 

@@ -9,6 +9,7 @@ from ..utils.auth_dependencies import get_current_player, CurrentUser
 from ..schemas.chat_schema import ChatMessageBroadcast, ChatHistoryResponse, ChatMessageRead
 from ..services.chat_services import create_chat_message, get_chat_history, get_recent_messages
 from ..services.auth_services import get_user_by_id
+from ...player.services.player_character_services import get_player_character
 import json
 from datetime import datetime
 
@@ -55,6 +56,7 @@ def get_active_users():
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
+    character_id: int | None = Query(None, ge=1),
     db: Session = Depends(get_db)
 ):
     """
@@ -95,7 +97,14 @@ async def websocket_endpoint(
     
     # ========== CONEXÃO ==========
     
-    username = user.login  # Usa o login como username
+    username = user.login
+
+    if character_id is not None:
+        db_character = get_player_character(db, character_id=character_id, user_id=user_id)
+        if db_character is None:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid character for this player")
+            return
+        username = db_character.codename or db_character.name or user.login
     
     await chat_manager.connect(
         websocket,

@@ -14,6 +14,18 @@ function formatNotification(n) {
     return `${name} — nova solicitação (${who})${ts ? ` • ${ts}` : ''}`
   }
 
+  if (type === 'character_request_rejected') {
+    const name = n.data?.name || 'Personagem'
+    const masterId = n.data?.rejected_by
+    return `${name} — rejeitada${masterId ? ` pelo mestre ${masterId}` : ''}${ts ? ` • ${ts}` : ''}`
+  }
+
+  if (type === 'character_request_approved') {
+    const name = n.data?.name || 'Personagem'
+    const masterId = n.data?.approved_by
+    return `${name} — aprovada${masterId ? ` pelo mestre ${masterId}` : ''}${ts ? ` • ${ts}` : ''}`
+  }
+
   if (type === 'rule_notice') {
     const msg = n.data?.message || 'Aviso'
     return `${msg}${ts ? ` • ${ts}` : ''}`

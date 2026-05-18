@@ -29,8 +29,9 @@ export default function LoginPage() {
       console.log('[LoginPage] Calling login() with:', { login: formData.login })
       const user = await login(formData.login, formData.password, formData.pin)
       console.log('[LoginPage] login() returned, user:', user)
-      console.log('[LoginPage] Navigating to:', user.role === 'master' ? '/master' : '/player')
-      navigate(user.role === 'master' ? '/master' : '/player')
+      const targetRoute = user.role === 'master' ? '/master' : '/player/select'
+      console.log('[LoginPage] Navigating to:', targetRoute)
+      navigate(targetRoute)
     } catch (err) {
       console.error('[LoginPage] Catch block, error:', err.message)
       setError(authError || 'Erro ao fazer login. Verifique suas credenciais.')

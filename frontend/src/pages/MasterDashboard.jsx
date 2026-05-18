@@ -17,6 +17,7 @@ const TABS = {
   DASHBOARD: 'dashboard',
   PLAYERS: 'players',
   CHARACTERS: 'characters',
+  REQUESTS: 'requests',
   ITEMS: 'items',
   FIGHT: 'fight',
   RACES: 'races',
@@ -29,6 +30,7 @@ export default function MasterDashboard() {
   const { user, logout } = useAuth()
   const { isConnected, notifications, clearNotifications } = useUserNotificationsWebSocket(user?.id)
   const [activeTab, setActiveTab] = useState(TABS.DASHBOARD)
+  const [badges, setBadges] = useState({})
   const [stats, setStats] = useState(null)
 
   useEffect(() => {
@@ -95,9 +97,39 @@ export default function MasterDashboard() {
     }
   }, [])
 
+  // Quando chega notificação de nova requisição de personagem, abre a aba e incrementa badge
+  useEffect(() => {
+    if (!notifications || notifications.length === 0) return
+    const latest = notifications[notifications.length - 1]
+    if (latest?.type === 'character_request_created') {
+      setActiveTab(TABS.REQUESTS)
+      setBadges((prev) => {
+        const next = { ...prev, requests: (prev.requests || 0) + 1 }
+        // persist via localStorage + notify other components
+        try {
+          localStorage.setItem('master-badges', JSON.stringify(next))
+          window.dispatchEvent(new CustomEvent('master-badges-updated', { detail: next }))
+        } catch {}
+        return next
+      })
+    }
+  }, [notifications])
+
+  // Initialize badges from storage and listen for external updates
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('master-badges')
+      if (raw) setBadges(JSON.parse(raw))
+    } catch {}
+
+    const handler = (e) => setBadges(e.detail || {})
+    window.addEventListener('master-badges-updated', handler)
+    return () => window.removeEventListener('master-badges-updated', handler)
+  }, [])
+
   return (
     <div className="flex h-screen bg-dark">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} isMaster={true} />
+      <Sidebar activeTab={activeTab} onTabChange={(tab) => { setActiveTab(tab); if (tab === TABS.REQUESTS) setBadges((p) => ({...p, requests: 0})); }} isMaster={true} badges={badges} />
 
       <main className="flex-1 overflow-auto">
         {/* Header */}
@@ -132,6 +164,8 @@ export default function MasterDashboard() {
             </>
           ) : activeTab === TABS.CHARACTERS ? (
             <MasterCharacterManager />
+          ) : activeTab === TABS.REQUESTS ? (
+            <CharacterRequests />
           ) : activeTab === TABS.ITEMS ? (
             <ItemManager />
           ) : activeTab === TABS.FIGHT ? (

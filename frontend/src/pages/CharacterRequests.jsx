@@ -1,4 +1,20 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useUserNotificationsWebSocket } from '../hooks/useUserNotificationsWebSocket'
+import { getMasterBadges, setMasterBadges } from '../utils/badges'
+
+const DEFAULT_ATTRIBUTES = {
+  hp: 20,
+  vigor: 50,
+  agility: 50,
+  speed: 50,
+  charisma: 50,
+  intellect: 50,
+  investigation: "basic",
+  presence: 50,
+  occultism: 50,
+  subclass: "",
+}
 
 export default function CharacterRequests() {
   const [requests, setRequests] = useState([]);
@@ -7,10 +23,31 @@ export default function CharacterRequests() {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [approvingId, setApprovingId] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
+  const [attributes, setAttributes] = useState(DEFAULT_ATTRIBUTES);
+  const { user } = useAuth()
+  const { notifications } = useUserNotificationsWebSocket(user?.id)
+  const [highlightedId, setHighlightedId] = useState(null);
 
   useEffect(() => {
     loadRequests();
   }, []);
+
+  useEffect(() => {
+    if (!notifications || notifications.length === 0) return
+    const latest = notifications[notifications.length - 1]
+    if (latest?.type === 'character_request_created' && latest?.data?.request_id) {
+      setHighlightedId(latest.data.request_id)
+      setTimeout(() => setHighlightedId(null), 8000)
+    }
+    if (latest?.type === 'character_request_approved' || latest?.type === 'character_request_rejected') {
+      // sync badge if backend or other tab updated it (requests)
+      try {
+        const badges = getMasterBadges() || {}
+        const next = { ...badges, requests: Math.max(0, (badges.requests || 0) - 1) }
+        setMasterBadges(next)
+      } catch {}
+    }
+  }, [notifications])
 
   const loadRequests = async () => {
     try {
@@ -71,7 +108,7 @@ export default function CharacterRequests() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify(attributes),
       });
 
       if (!response.ok) {
@@ -83,6 +120,13 @@ export default function CharacterRequests() {
         prev.map((r) => (r.id === requestId ? { ...r, status: "approved" } : r))
       );
       setSelectedRequest(null);
+      setAttributes(DEFAULT_ATTRIBUTES);
+      // decrement master badge count (requests)
+      try {
+        const badges = getMasterBadges() || {}
+        const next = { ...badges, requests: Math.max(0, (badges.requests || 0) - 1) }
+        setMasterBadges(next)
+      } catch {}
     } catch (err) {
       console.error("Erro:", err);
       alert("Erro ao aprovar: " + err.message);
@@ -110,6 +154,11 @@ export default function CharacterRequests() {
         prev.map((r) => (r.id === requestId ? { ...r, status: "rejected" } : r))
       );
       setSelectedRequest(null);
+      try {
+        const badges = getMasterBadges() || {}
+        const next = { ...badges, requests: Math.max(0, (badges.requests || 0) - 1) }
+        setMasterBadges(next)
+      } catch {}
     } catch (err) {
       console.error("Erro:", err);
       alert("Erro ao rejeitar: " + err.message);
@@ -172,8 +221,11 @@ export default function CharacterRequests() {
                   selectedRequest?.id === req.id
                     ? "bg-dark-secondary border-orange-500"
                     : "bg-dark-secondary border-dark-border hover:border-orange-500"
-                }`}
-                onClick={() => setSelectedRequest(req)}
+                } ${highlightedId === req.id ? 'ring-2 ring-orange-400 animate-pulse' : ''}`}
+                onClick={() => {
+                  setSelectedRequest(req);
+                  setAttributes(DEFAULT_ATTRIBUTES);
+                }}
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -274,6 +326,167 @@ export default function CharacterRequests() {
               </p>
             </div>
           )}
+
+          <div className="mb-6">
+            <h4 className="text-lg font-bold text-cyan-400 mb-4">Definir Atributos</h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {/* HP */}
+              <div>
+                <label className="block text-secondary text-sm mb-2">
+                  Pontos de Vida (HP): {attributes.hp}
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="200"
+                  value={attributes.hp}
+                  onChange={(e) => setAttributes({ ...attributes, hp: parseInt(e.target.value) })}
+                  className="w-full accent-cyan-400"
+                />
+                <input
+                  type="number"
+                  min="1"
+                  max="200"
+                  value={attributes.hp}
+                  onChange={(e) => setAttributes({ ...attributes, hp: Math.max(1, parseInt(e.target.value) || 0) })}
+                  className="mt-2 w-full bg-dark border border-dark-border rounded px-2 py-1 text-white text-sm"
+                />
+              </div>
+
+              {/* Vigor */}
+              <div>
+                <label className="block text-secondary text-sm mb-2">
+                  Vigor: {attributes.vigor}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={attributes.vigor}
+                  onChange={(e) => setAttributes({ ...attributes, vigor: parseInt(e.target.value) })}
+                  className="w-full accent-cyan-400"
+                />
+              </div>
+
+              {/* Agilidade */}
+              <div>
+                <label className="block text-secondary text-sm mb-2">
+                  Agilidade: {attributes.agility}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={attributes.agility}
+                  onChange={(e) => setAttributes({ ...attributes, agility: parseInt(e.target.value) })}
+                  className="w-full accent-cyan-400"
+                />
+              </div>
+
+              {/* Velocidade */}
+              <div>
+                <label className="block text-secondary text-sm mb-2">
+                  Velocidade: {attributes.speed}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={attributes.speed}
+                  onChange={(e) => setAttributes({ ...attributes, speed: parseInt(e.target.value) })}
+                  className="w-full accent-cyan-400"
+                />
+              </div>
+
+              {/* Carisma */}
+              <div>
+                <label className="block text-secondary text-sm mb-2">
+                  Carisma: {attributes.charisma}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={attributes.charisma}
+                  onChange={(e) => setAttributes({ ...attributes, charisma: parseInt(e.target.value) })}
+                  className="w-full accent-cyan-400"
+                />
+              </div>
+
+              {/* Intelecto */}
+              <div>
+                <label className="block text-secondary text-sm mb-2">
+                  Intelecto: {attributes.intellect}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={attributes.intellect}
+                  onChange={(e) => setAttributes({ ...attributes, intellect: parseInt(e.target.value) })}
+                  className="w-full accent-cyan-400"
+                />
+              </div>
+
+              {/* Presença */}
+              <div>
+                <label className="block text-secondary text-sm mb-2">
+                  Presença: {attributes.presence}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={attributes.presence}
+                  onChange={(e) => setAttributes({ ...attributes, presence: parseInt(e.target.value) })}
+                  className="w-full accent-cyan-400"
+                />
+              </div>
+
+              {/* Ocultismo */}
+              <div>
+                <label className="block text-secondary text-sm mb-2">
+                  Ocultismo: {attributes.occultism}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={attributes.occultism}
+                  onChange={(e) => setAttributes({ ...attributes, occultism: parseInt(e.target.value) })}
+                  className="w-full accent-cyan-400"
+                />
+              </div>
+
+              {/* Investigação */}
+              <div>
+                <label className="block text-secondary text-sm mb-2">Investigação</label>
+                <select
+                  value={attributes.investigation}
+                  onChange={(e) => setAttributes({ ...attributes, investigation: e.target.value })}
+                  className="w-full bg-dark border border-dark-border rounded px-2 py-1 text-white text-sm"
+                >
+                  <option value="basic">Básico</option>
+                  <option value="intermediate">Intermediário</option>
+                  <option value="advanced">Avançado</option>
+                  <option value="forensic">Forense</option>
+                </select>
+              </div>
+
+              {/* Subclasse */}
+              <div>
+                <label className="block text-secondary text-sm mb-2">Subclasse (Opcional)</label>
+                <input
+                  type="text"
+                  value={attributes.subclass}
+                  onChange={(e) => setAttributes({ ...attributes, subclass: e.target.value })}
+                  placeholder="Ex: Eden, Nede, etc"
+                  className="w-full bg-dark border border-dark-border rounded px-2 py-1 text-white text-sm"
+                />
+              </div>
+            </div>
+          </div>
 
           <div className="flex gap-2">
             <button

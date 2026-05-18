@@ -13,8 +13,20 @@ export function useUserNotificationsWebSocket(userId) {
 
     const token = localStorage.getItem("token");
     if (!token) return;
+    const storedUser = localStorage.getItem("user");
+    let role = null;
+
+    if (storedUser) {
+      try {
+        role = JSON.parse(storedUser)?.role || null;
+      } catch {
+        role = null;
+      }
+    }
+
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${wsProtocol}//${window.location.host}/api/updates/ws`;
+    const wsPath = role === "master" ? `/ws/user-updates/${userId}` : "/api/updates/ws";
+    const wsUrl = `${wsProtocol}//${window.location.host}${wsPath}`;
 
     const ws = new WebSocket(wsUrl, ['bearer', token]);
 

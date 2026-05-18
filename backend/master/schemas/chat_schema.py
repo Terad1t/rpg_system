@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional
 
-_CHAT_MESSAGE_TYPES = {"message", "user_joined", "user_left", "error"}
+_CHAT_MESSAGE_TYPES = {"message", "user_joined", "user_left", "error", "history", "system"}
 
 
 class ChatMessageCreate(BaseModel):
@@ -29,7 +29,7 @@ class ChatMessageBroadcast(BaseModel):
     username: str
     message: str
     created_at: Optional[str] = None
-    message_type: str = "message"  # "message", "user_joined", "user_left", "error"
+    message_type: str = "message"  # "message", "user_joined", "user_left", "error", "history", "system"
 
     @field_validator("message_type")
     def validate_message_type(cls, v):

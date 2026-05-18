@@ -106,6 +106,8 @@ class CharacterRead(BaseModel):
     debuffs: Optional[str] = None
     user_id: Optional[int] = None
     current_map_id: Optional[int] = None
+    free_points: Optional[int] = None
+    total_points_distributed: Optional[int] = None
 
     class Config:
         from_attributes = True

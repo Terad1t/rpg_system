@@ -85,6 +85,8 @@ def approve_request(db: Session, request_id: int, approval_data: Dict, master_us
         description=req.description,
         user_id=req.user_id,
         subclass=approval_data.get("subclass"),
+        free_points=10,
+        total_points_distributed=0,
     )
     db.add(character)
     db.commit()

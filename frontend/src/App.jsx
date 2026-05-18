@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import LoginPage from './pages/LoginPage'
-import PlayerDashboard from './pages/PlayerDashboard'
+import PlayerCharacterSelectPage from './pages/PlayerCharacterSelectPage'
+import PlayerSessionPage from './pages/PlayerSessionPage'
 import MasterDashboard from './pages/MasterDashboard'
 
 function PrivateRoute({ children, requiredRole }) {
@@ -37,7 +38,15 @@ function AppRoutes() {
         path="/player"
         element={
           <PrivateRoute requiredRole="player">
-            <PlayerDashboard />
+            <PlayerSessionPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/player/select"
+        element={
+          <PrivateRoute requiredRole="player">
+            <PlayerCharacterSelectPage />
           </PrivateRoute>
         }
       />

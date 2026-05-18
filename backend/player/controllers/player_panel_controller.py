@@ -64,6 +64,8 @@ def _serialize_character(character: Character):
             "description": character.raca.description if character.raca else None,
             "image": character.raca.image if character.raca else None,
         },
+        "freePoints": character.free_points,
+        "totalPointsDistributed": character.total_points_distributed,
         "current_map_id": character.current_map_id,
         "current_map": {
             "id": character.current_map.id,

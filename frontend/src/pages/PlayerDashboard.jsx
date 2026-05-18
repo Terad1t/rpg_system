@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useUserNotificationsWebSocket } from '../hooks/useUserNotificationsWebSocket'
+import { useCharacterUpdates } from '../hooks/useCharacterUpdates'
 import api from '../services/api'
 import { Button, Card, StatBar } from '../components/common'
 import PlayerCharacter from '../components/player/PlayerCharacter'
@@ -169,16 +171,195 @@ function MapHierarchy({ worldMap = [], selectedMapId = null }) {
   )
 }
 
+function CharacterEntryScreen({
+  user,
+  characters = [],
+  selectedCharacterId = null,
+  loading = false,
+  error = null,
+  onSelectCharacter,
+  onRefresh,
+  onLogout,
+  onEnterPanel,
+}) {
+  const selectedCharacter = characters.find((character) => character.id === selectedCharacterId) || null
+
+  return (
+    <div className="relative min-h-screen overflow-hidden text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.16),transparent_30%),radial-gradient(circle_at_85%_10%,rgba(255,122,24,0.12),transparent_25%),linear-gradient(180deg,rgba(4,8,21,0.95)_0%,rgba(7,17,31,0.98)_100%)]" />
+      <div className="pointer-events-none absolute left-0 top-0 h-64 w-64 rounded-full bg-cyan-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute right-0 top-24 h-72 w-72 rounded-full bg-orange-400/10 blur-3xl" />
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-white/10 bg-[#07111fe6] p-6 backdrop-blur-xl">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div className="space-y-3">
+              <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-200/75">Player Interface</p>
+              <h1 className="text-2xl font-black uppercase tracking-[0.12em] text-white sm:text-4xl sm:tracking-[0.2em]">
+                Escolha seu personagem
+              </h1>
+              <p className="max-w-2xl text-sm text-slate-300">
+                Depois de escolher, o painel completo do personagem será aberto com chat, ficha, inventário, mapa e painel rápido.
+              </p>
+              <p className="text-sm uppercase tracking-[0.35em] text-slate-300">Bem-vindo, {user?.login}</p>
+            </div>
+
+            <div className="grid gap-3 min-[480px]:grid-cols-3 xl:w-[34rem]">
+              <div className="border border-white/10 bg-white/5 px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Personagens</p>
+                <p className="mt-1 text-lg font-semibold text-cyan-200">{characters.length}/3</p>
+              </div>
+              <div className="border border-white/10 bg-white/5 px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Selecionado</p>
+                <p className="mt-1 text-lg font-semibold text-white">{selectedCharacter?.codename || 'Nenhum'}</p>
+              </div>
+              <div className="border border-white/10 bg-white/5 px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Status</p>
+                <p className="mt-1 text-lg font-semibold text-orange-200">Pronto para entrar</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button size="sm" onClick={onRefresh} disabled={loading}>Atualizar personagens</Button>
+            <Button size="sm" variant="ghost" onClick={onLogout}>Sair</Button>
+          </div>
+
+          {error && (
+            <div className="mt-4 rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-3 text-sm text-red-200">
+              {error}
+            </div>
+          )}
+        </div>
+
+        {characters.length > 0 ? (
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+            <Card title="Seus personagens" className="border border-white/10 bg-[#08111f]/90">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {characters.map((character) => {
+                  const isSelected = selectedCharacter?.id === character.id
+                  const portrait = character.portrait || character.race?.image || character.current_map?.image || null
+                  const isUpdated = updatedCharacterIds.has(character.id)
+
+                  return (
+                    <button
+                      key={character.id}
+                      onClick={() => onSelectCharacter(character.id)}
+                      className={`overflow-hidden border text-left transition ${isSelected ? 'border-cyan-400/60 bg-cyan-400/10' : 'border-white/10 bg-white/5 hover:border-cyan-400/40 hover:bg-white/10'} ${isUpdated ? 'animate-pulse border-orange-400/60 bg-orange-400/10' : ''}`}
+                    >
+                      <div className="h-44 w-full overflow-hidden bg-[#0c1528]">
+                        {portrait ? (
+                          <img src={portrait} alt={character.codename || character.name || 'Personagem'} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.35em] text-slate-400">
+                            Sem imagem
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-3 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">{character.status}</p>
+                            <h3 className="mt-2 text-xl font-semibold text-white">{character.codename || character.name}</h3>
+                            <p className="mt-2 text-sm text-slate-300">{character.name}</p>
+                          </div>
+                          <span className="border border-white/10 bg-[#0c1528] px-3 py-1 text-xs uppercase tracking-[0.3em] text-cyan-200">
+                            {character.current_map?.name || 'Sem mapa'}
+                          </span>
+                        </div>
+
+                        <div className="grid gap-2 text-xs uppercase tracking-[0.3em] text-slate-400 sm:grid-cols-2">
+                          <div className="border border-white/10 bg-[#0c1528] px-3 py-2">
+                            Raça: <span className="text-white">{character.race?.name || 'Indefinida'}</span>
+                          </div>
+                          <div className="border border-white/10 bg-[#0c1528] px-3 py-2">
+                            Classe: <span className="text-white">{character.class || 'Indefinida'}</span>
+                          </div>
+                        </div>
+
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            onEnterPanel(character.id)
+                          }}
+                        >
+                          Entrar com este personagem
+                        </Button>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </Card>
+
+            <Card title="Resumo rápido" className="border border-white/10 bg-[#08111f]/90">
+              {selectedCharacter ? (
+                <div className="space-y-4">
+                  <div className="border border-white/10 bg-white/5 p-4">
+                    <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Personagem escolhido</p>
+                    <p className="mt-2 text-2xl font-black uppercase tracking-[0.12em] text-white">
+                      {selectedCharacter.codename || selectedCharacter.name}
+                    </p>
+                    <p className="mt-2 text-sm text-slate-300">{selectedCharacter.description || 'Sem descrição.'}</p>
+                  </div>
+
+                  <div className="grid gap-3">
+                    <div className="border border-white/10 bg-white/5 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Vida</p>
+                      <p className="mt-2 text-lg font-semibold text-white">{selectedCharacter.hp}/{selectedCharacter.maxHp}</p>
+                    </div>
+                    <div className="border border-white/10 bg-white/5 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Mana</p>
+                      <p className="mt-2 text-lg font-semibold text-cyan-200">{selectedCharacter.mana}/{selectedCharacter.maxMana}</p>
+                    </div>
+                    <div className="border border-white/10 bg-white/5 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Efeitos</p>
+                      <p className="mt-2 text-sm text-slate-300">Buffs e debuffs serão carregados no painel do personagem após a entrada.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4 text-sm text-slate-300">
+                  <p>Selecione um personagem para visualizar o resumo rápido e entrar no painel completo.</p>
+                  <p>Se você não tiver personagens, pode solicitar a criação abaixo.</p>
+                </div>
+              )}
+            </Card>
+          </div>
+        ) : (
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+            <Card title="Nenhum personagem criado" className="border border-white/10 bg-[#08111f]/90">
+              <div className="space-y-4 text-sm text-slate-300">
+                <p>Você ainda não possui personagens disponíveis para entrar no painel.</p>
+                <p>Solicite a criação de um personagem abaixo e, depois de aprovado, volte para esta tela.</p>
+              </div>
+            </Card>
+            <CharacterRequestForm />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function PlayerDashboard() {
+  const navigate = useNavigate()
   const { user, logout } = useAuth()
   const { notifications } = useUserNotificationsWebSocket(user?.id)
+  const { characterUpdates } = useCharacterUpdates()
   const [activeTab, setActiveTab] = useState(TABS.OVERVIEW)
   const [panelData, setPanelData] = useState({ characters: [], races: [], world_map: [] })
   const [selectedCharacterId, setSelectedCharacterId] = useState(null)
+  const [panelMode, setPanelMode] = useState('select')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [characterModalOpen, setCharacterModalOpen] = useState(false)
   const [characterModalId, setCharacterModalId] = useState(null)
+  const [updatedCharacterIds, setUpdatedCharacterIds] = useState(new Set())
+  const selectionStorageKey = user?.id ? `player-dashboard:selected-character:${user.id}` : null
 
   const loadPanel = async () => {
     try {
@@ -206,9 +387,44 @@ export default function PlayerDashboard() {
     }
   }, [notifications])
 
+  // Monitora atualizações de personagem do mestre em tempo real
+  useEffect(() => {
+    if (!characterUpdates || characterUpdates.length === 0) return
+
+    const latestUpdate = characterUpdates[characterUpdates.length - 1]
+    if (!latestUpdate?.data?.character_id) return
+
+    const action = latestUpdate.data.action
+    const characterId = latestUpdate.data.character_id
+
+    if (action === 'deleted') {
+      // Se o personagem foi deletado, recarregar o painel
+      setPanelData((prev) => ({
+        ...prev,
+        characters: (prev.characters || []).filter((c) => c.id !== characterId),
+      }))
+      // Se era o personagem selecionado, limpar a seleção
+      if (selectedCharacterId === characterId) {
+        setSelectedCharacterId(null)
+      }
+    } else if (action === 'updated' && latestUpdate.data.character) {
+      // Se foi atualizado, recarregar dados
+      loadPanel()
+      // Marcar como atualizado para animar
+      setUpdatedCharacterIds((prev) => new Set([...prev, characterId]))
+      setTimeout(() => {
+        setUpdatedCharacterIds((prev) => {
+          const next = new Set(prev)
+          next.delete(characterId)
+          return next
+        })
+      }, 1500)
+    }
+  }, [characterUpdates, selectedCharacterId])
+
   const activeTabMeta = TAB_META[activeTab] || TAB_META[TABS.OVERVIEW]
   const visibleCharacters = useMemo(() => (panelData.characters || []).slice(0, 3), [panelData.characters])
-  const selectedCharacter = visibleCharacters.find((character) => character.id === selectedCharacterId) || visibleCharacters[0] || null
+  const selectedCharacter = visibleCharacters.find((character) => character.id === selectedCharacterId) || null
   const playerItems = useMemo(() => aggregateItems(visibleCharacters), [visibleCharacters])
   const selectedCharacterRaceName = typeof selectedCharacter?.race === 'string' ? selectedCharacter?.race : selectedCharacter?.race?.name
   const selectedCharacterArtwork = selectedCharacter?.portrait || selectedCharacter?.race?.image || selectedCharacter?.current_map?.image || null
@@ -220,11 +436,57 @@ export default function PlayerDashboard() {
     : (selectedCharacterRaceName || 'Raça indefinida')
   const selectedCharacterPortrait = selectedCharacter?.portrait || selectedCharacter?.race?.image || selectedCharacter?.current_map?.image || null
 
-    useEffect(() => {
-      if (!selectedCharacterId && visibleCharacters.length > 0) {
-        setSelectedCharacterId(visibleCharacters[0].id)
+  useEffect(() => {
+    if (loading) return
+
+    if (!visibleCharacters.length) {
+      setSelectedCharacterId(null)
+      setPanelMode('select')
+      return
+    }
+
+    if (selectedCharacterId && visibleCharacters.some((character) => character.id === selectedCharacterId)) {
+      setPanelMode('dashboard')
+      return
+    }
+
+    const savedCharacterId = selectionStorageKey ? localStorage.getItem(selectionStorageKey) : null
+    if (savedCharacterId) {
+      const parsedCharacterId = Number(savedCharacterId)
+      if (visibleCharacters.some((character) => character.id === parsedCharacterId)) {
+        setSelectedCharacterId(parsedCharacterId)
+        setPanelMode('dashboard')
+        return
       }
-    }, [selectedCharacterId, visibleCharacters])
+    }
+
+    setSelectedCharacterId(null)
+    setPanelMode('select')
+  }, [loading, selectionStorageKey, selectedCharacterId, visibleCharacters])
+
+  const handleSelectCharacter = (characterId) => {
+    setSelectedCharacterId(characterId)
+    if (selectionStorageKey) {
+      localStorage.setItem(selectionStorageKey, String(characterId))
+    }
+    setActiveTab(TABS.OVERVIEW)
+    setCharacterModalOpen(false)
+    setCharacterModalId(null)
+  }
+
+  const handleEnterPanel = (characterId) => {
+    handleSelectCharacter(characterId)
+  }
+
+  const handleReturnToSelection = () => {
+    if (selectionStorageKey) {
+      localStorage.removeItem(selectionStorageKey)
+    }
+    setActiveTab(TABS.OVERVIEW)
+    setCharacterModalOpen(false)
+    setCharacterModalId(null)
+    navigate('/player/select')
+  }
 
     if (loading) {
       return (
@@ -235,6 +497,10 @@ export default function PlayerDashboard() {
           </div>
         </div>
       )
+    }
+
+    if (!selectedCharacter) {
+      return <Navigate to="/player/select" replace />
     }
 
     return (
@@ -250,18 +516,20 @@ export default function PlayerDashboard() {
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div className="space-y-3">
                 <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-200/75">Player Interface</p>
-                <h1 className="text-2xl font-black uppercase tracking-[0.12em] text-white sm:text-4xl sm:tracking-[0.2em]">Painel dos Jogadores</h1>
+                <h1 className="text-2xl font-black uppercase tracking-[0.12em] text-white sm:text-4xl sm:tracking-[0.2em]">Painel do Personagem</h1>
                 <p className="text-sm uppercase tracking-[0.35em] text-slate-300">Bem-vindo, {user?.login}</p>
                 <p className="max-w-2xl text-sm text-slate-300">{activeTabMeta.label}: {activeTabMeta.description}</p>
               </div>
               <div className="grid gap-3 min-[480px]:grid-cols-3 xl:w-[34rem]">
                 <div className="border border-white/10 bg-white/5 px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Personagem</p>
-                  <p className="mt-1 text-lg font-semibold text-white">{selectedCharacterLabel}</p>
+                  <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">HP / Mana / Energia</p>
+                  <p className="mt-1 text-lg font-semibold text-white">
+                    {selectedCharacter.hp}/{selectedCharacter.maxHp} · {selectedCharacter.mana}/{selectedCharacter.maxMana} · {selectedCharacter.vigor}/{selectedCharacter.maxVigor}
+                  </p>
                 </div>
                 <div className="border border-white/10 bg-white/5 px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Personagens</p>
-                  <p className="mt-1 text-lg font-semibold text-cyan-200">{visibleCharacters.length}/3</p>
+                  <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Codinome</p>
+                  <p className="mt-1 text-lg font-semibold text-cyan-200">{selectedCharacter?.codename || 'Sem codinome'}</p>
                 </div>
                 <div className="border border-white/10 bg-white/5 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Itens</p>
@@ -311,6 +579,7 @@ export default function PlayerDashboard() {
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <Button size="sm" onClick={loadPanel}>Atualizar painel</Button>
+              <Button size="sm" variant="ghost" onClick={handleReturnToSelection}>Trocar personagem</Button>
               <Button size="sm" variant="ghost" onClick={logout}>Sair</Button>
             </div>
 
@@ -347,6 +616,27 @@ export default function PlayerDashboard() {
                   </div>
 
                   <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+                    <Card title="Painel rápido" className="border border-white/10 bg-[#08111f]/90">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="border border-white/10 bg-white/5 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Vida</p>
+                          <p className="mt-2 text-3xl font-black text-white">{selectedCharacter.hp}/{selectedCharacter.maxHp}</p>
+                        </div>
+                        <div className="border border-white/10 bg-white/5 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Mana</p>
+                          <p className="mt-2 text-3xl font-black text-cyan-200">{selectedCharacter.mana}/{selectedCharacter.maxMana}</p>
+                        </div>
+                        <div className="border border-white/10 bg-white/5 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Energia</p>
+                          <p className="mt-2 text-3xl font-black text-orange-200">{selectedCharacter.vigor}/{selectedCharacter.maxVigor}</p>
+                        </div>
+                        <div className="border border-white/10 bg-white/5 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Efeitos</p>
+                          <p className="mt-2 text-sm text-slate-300">Buffs e debuffs acompanham a sessão em tempo real.</p>
+                        </div>
+                      </div>
+                    </Card>
+
                     <Card title="Dicionário de Raças" className="border border-white/10 bg-[#08111f]/90">
                       <div className="grid gap-4 md:grid-cols-2">
                         {panelData.races.map((race) => (
@@ -369,7 +659,7 @@ export default function PlayerDashboard() {
                       </div>
                     </Card>
 
-                    <Card title="Personagens" className="border border-white/10 bg-[#08111f]/90">
+                    <Card title="Ficha do personagem" className="border border-white/10 bg-[#08111f]/90">
                       <div className="space-y-3">
                         {visibleCharacters.map((character) => (
                           <button
@@ -384,7 +674,7 @@ export default function PlayerDashboard() {
                             <div className="flex items-start justify-between gap-3">
                               <div>
                                 <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">{character.status}</p>
-                                <h3 className="mt-2 text-xl font-semibold text-white">{character.name}</h3>
+                                <h3 className="mt-2 text-xl font-semibold text-white">{character.codename || character.name}</h3>
                                 <p className="mt-2 text-sm text-slate-300">{character.race?.name || 'Raça indefinida'} • {character.class}</p>
                               </div>
                               <span className="border border-white/10 bg-[#0c1528] px-3 py-1 text-xs uppercase tracking-[0.3em] text-cyan-200">{character.current_map?.name || 'Sem mapa'}</span>
@@ -722,7 +1012,7 @@ export default function PlayerDashboard() {
             </aside>
           </div>
 
-          <PlayerChat compact defaultCollapsed />
+          <PlayerChat compact defaultCollapsed identityLabel={selectedCharacter?.codename || selectedCharacter?.name || 'Personagem'} />
         </main>
       </div>
     )
