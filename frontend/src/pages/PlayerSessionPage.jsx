@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useUserNotificationsWebSocket } from '../hooks/useUserNotificationsWebSocket'
 import api from '../services/api'
-import { Button, Card } from '../components/common'
+import { Button, Card, Modal } from '../components/common'
 import PlayerCharacter from '../components/player/PlayerCharacter'
 import PlayerInventory from '../components/player/PlayerInventory'
 import PlayerChat from '../components/player/PlayerChat'
@@ -146,6 +146,7 @@ export default function PlayerSessionPage() {
   const [loading, setLoading] = useState(true)
   const [selectionResolved, setSelectionResolved] = useState(false)
   const [error, setError] = useState(null)
+  const [inviteModal, setInviteModal] = useState(null)
   const selectionStorageKey = user?.id ? `player-dashboard:selected-character:${user.id}` : null
 
   const loadPanel = async () => {
@@ -188,8 +189,24 @@ export default function PlayerSessionPage() {
       if (latestNotification?.data?.action === 'created' && latestNotification?.data?.character_id) {
         loadPanel()
       }
+
+      // handle fight invite
+      if (latestNotification?.type === 'fight_invite') {
+        setInviteModal(latestNotification.data || { fight_id: latestNotification?.data?.fight_id })
+      }
     }
   }, [notifications])
+
+  const respondToInvite = async (accept) => {
+    if (!inviteModal) return
+    try {
+      await api.post(`/api/fights/${inviteModal.fight_id}/respond`, { user_id: user.id, accept })
+    } catch (err) {
+      console.error('Erro ao responder invite', err)
+    } finally {
+      setInviteModal(null)
+    }
+  }
 
   const visibleCharacters = useMemo(() => (panelData.characters || []).slice(0, 3), [panelData.characters])
   const selectedCharacter = visibleCharacters.find((character) => character.id === selectedCharacterId) || null
@@ -266,6 +283,15 @@ export default function PlayerSessionPage() {
             <Button size="sm" variant="ghost" onClick={handleReturnToSelection}>Trocar personagem</Button>
             <Button size="sm" variant="ghost" onClick={logout}>Sair</Button>
           </div>
+
+          {inviteModal && (
+            <Modal isOpen={true} onClose={() => setInviteModal(null)} title={`Convite para sessão: ${inviteModal.name || inviteModal.fight_id}`} actions={[{ label: 'Aceitar', onClick: () => respondToInvite(true) }, { label: 'Recusar', variant: 'ghost', onClick: () => respondToInvite(false) }]}>
+              <div className="space-y-3">
+                <p className="text-sm text-slate-300">O mestre convidou você para a sessão <strong>{inviteModal.name || `#${inviteModal.fight_id}`}</strong>.</p>
+                <p className="text-sm text-slate-400">Tempo para responder: {inviteModal.expires_in ? `${inviteModal.expires_in}s` : '20s'}</p>
+              </div>
+            </Modal>
+          )}
 
           {error && (
             <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/15 px-4 py-3 text-sm text-red-200">

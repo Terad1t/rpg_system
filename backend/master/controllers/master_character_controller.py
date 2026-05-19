@@ -179,16 +179,10 @@ async def apply_character_quick_update(character_id: int, payload: dict, current
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
 
-    if payload.get("hp") is not None:
-        current_hp = int(character.hp or 0)
-        character.hp = max(0, current_hp + int(payload.get("hp", 0)))
-    if payload.get("mana") is not None:
-        current_mana = int(character.mana or 0)
-        character.mana = max(0, current_mana + int(payload.get("mana", 0)))
-    if payload.get("set_hp") is not None:
-        character.hp = max(0, int(payload["set_hp"]))
-    if payload.get("set_mana") is not None:
-        character.mana = max(0, int(payload["set_mana"]))
+    # Enforce policy: Masters are not allowed to directly change HP/Mana via this endpoint.
+    forbidden_keys = {"hp", "mana", "set_hp", "set_mana"}
+    if any(k in payload for k in forbidden_keys):
+        raise HTTPException(status_code=403, detail="Masters are not allowed to directly modify HP or Mana. Use buffs/debuffs or fight actions instead.")
     if payload.get("buffs") is not None:
         character.buffs = payload.get("buffs") if isinstance(payload.get("buffs"), str) else json.dumps(payload.get("buffs"))
     if payload.get("debuffs") is not None:

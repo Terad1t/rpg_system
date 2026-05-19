@@ -49,6 +49,7 @@ from .models import (
     batalha_model,
     batalha_participante_model,
     fight_model,
+    fight_participant_model,
     fight_entry_model,
     habilidades_model,
     region_model,
@@ -65,6 +66,7 @@ from .models import (
     character_habilidade_model,
     master_audit_model,
     buff_debuff_model,
+    fight_invite_model,
 )
 
 from .services.auth_services import initialize_master_if_not_exists

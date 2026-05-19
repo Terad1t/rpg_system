@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import api from '../services/api'
-import { Button, Card } from '../components/common'
+import { Button, Card, Modal } from '../components/common'
+import { useAuth } from '../context/AuthContext'
+import { useUserNotificationsWebSocket } from '../hooks/useUserNotificationsWebSocket'
 
 const EMPTY_FIGHT = {
   name: '',
@@ -23,6 +25,13 @@ export default function FightManager() {
   const [entryForm, setEntryForm] = useState(EMPTY_ENTRY)
   const [message, setMessage] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [inviteModalOpen, setInviteModalOpen] = useState(false)
+  const [availableCharacters, setAvailableCharacters] = useState([])
+  const [selectedUserIds, setSelectedUserIds] = useState([])
+  const [inviteExpiresIn, setInviteExpiresIn] = useState(20)
+  const [inviteResponses, setInviteResponses] = useState({ accepted: [], declined: [], pending: [] })
+  const { user } = useAuth()
+  const { notifications } = useUserNotificationsWebSocket(user?.id)
 
   const selectedFight = useMemo(
     () => fights.find((fight) => fight.id === selectedFightId) || fights[0] || null,
@@ -52,6 +61,64 @@ export default function FightManager() {
   useEffect(() => {
     loadData()
   }, [])
+
+  // Use WebSocket notifications to keep invite responses updated in real time
+  useEffect(() => {
+    if (!inviteModalOpen || !selectedFight) return
+
+    let mounted = true
+    const fetchResponses = async () => {
+      try {
+        const res = await api.get(`/api/fights/${selectedFight.id}/responses`)
+        if (mounted) setInviteResponses(res.data || { accepted: [], declined: [], pending: [] })
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    fetchResponses()
+
+    return () => { mounted = false }
+  }, [inviteModalOpen, selectedFight])
+
+  // apply incremental updates from WS notifications
+  useEffect(() => {
+    if (!inviteModalOpen || !selectedFight || !notifications) return
+
+    // process each new notification (notifications array is append-only)
+    const relevant = notifications.filter((n) => n && n.type && ["fight_invite_response", "fight_invite_results"].includes(n.type) && n.data?.fight_id === selectedFight.id)
+    if (relevant.length === 0) return
+
+    // fold updates into current state
+    setInviteResponses((prev) => {
+      let next = { accepted: [...(prev.accepted || [])], declined: [...(prev.declined || [])], pending: [...(prev.pending || [])] }
+
+      for (const n of relevant) {
+        if (n.type === 'fight_invite_response') {
+          const { user_id, accept } = n.data || {}
+          if (accept) {
+            if (!next.accepted.includes(user_id)) next.accepted.push(user_id)
+            next.declined = next.declined.filter((u) => u !== user_id)
+            next.pending = next.pending.filter((u) => u !== user_id)
+          } else {
+            if (!next.declined.includes(user_id)) next.declined.push(user_id)
+            next.accepted = next.accepted.filter((u) => u !== user_id)
+            next.pending = next.pending.filter((u) => u !== user_id)
+          }
+        }
+
+        if (n.type === 'fight_invite_results') {
+          next = {
+            accepted: n.data?.accepted || [],
+            declined: n.data?.declined || [],
+            pending: [],
+          }
+        }
+      }
+
+      return next
+    })
+  }, [notifications, inviteModalOpen, selectedFight])
 
   useEffect(() => {
     if (!selectedFight) return
@@ -123,6 +190,43 @@ export default function FightManager() {
       await loadData()
     } catch (error) {
       setMessage({ type: 'error', text: error.response?.data?.detail || error.message || 'Erro ao remover entrada' })
+    }
+  }
+
+  const openInviteModal = async (fightId) => {
+    if (!fightId) return
+    // load characters to allow selecting participants
+    try {
+      const res = await api.get('/api/master/characters/')
+      const chars = res.data || []
+      setAvailableCharacters(chars)
+      // preselect online players (owners)
+      const onlineUserIds = Array.from(new Set(chars.filter((c) => c.is_online && c.owner).map((c) => c.owner.id)))
+      setSelectedUserIds(onlineUserIds)
+      setInviteModalOpen(true)
+      setInviteResponses({ accepted: [], declined: [], pending: [] })
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Falha ao carregar jogadores para convite.' })
+    }
+  }
+
+  const toggleSelectUser = (userId) => {
+    if (!userId) return
+    setSelectedUserIds((prev) => prev.includes(userId) ? prev.filter((u) => u !== userId) : [...prev, userId])
+  }
+
+  const sendInvites = async () => {
+    if (!selectedFight) return
+    if (!selectedUserIds || selectedUserIds.length === 0) {
+      alert('Selecione pelo menos um usuário para convidar.')
+      return
+    }
+    try {
+      await api.post(`/api/fights/${selectedFight.id}/invite`, { user_ids: selectedUserIds, expires_in: inviteExpiresIn })
+      setMessage({ type: 'success', text: 'Convites enviados.' })
+      // keep modal open to show responses
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.detail || 'Falha ao enviar convites' })
     }
   }
 
@@ -221,6 +325,7 @@ export default function FightManager() {
                   <p className="mt-3 text-xs text-slate-300">{fight.started_at ? new Date(fight.started_at).toLocaleString('pt-BR') : 'Sem data'}</p>
                   <div className="mt-4 flex gap-2">
                     <Button type="button" variant="ghost" size="sm" className="flex-1" onClick={(event) => { event.stopPropagation(); removeFight(fight.id) }}>Remover</Button>
+                    <Button type="button" variant="primary" size="sm" className="flex-1" onClick={(event) => { event.stopPropagation(); openInviteModal(fight.id) }}>Iniciar sessão (Lobby)</Button>
                   </div>
                 </button>
               ))}
@@ -321,6 +426,45 @@ export default function FightManager() {
           </div>
         </Card>
       </div>
+      <Modal isOpen={inviteModalOpen} onClose={() => { setInviteModalOpen(false) }} title={`Convidar jogadores para: ${selectedFight?.name || ''}`} size="lg" actions={[{ label: 'Enviar convites', onClick: sendInvites }, { label: 'Fechar', variant: 'ghost', onClick: () => { setInviteModalOpen(false) } }]}>
+        <div className="space-y-4">
+          <p className="text-sm text-slate-300">Selecione os jogadores/usuários para convidar. A janela de prontidão será de <strong>{inviteExpiresIn}s</strong>.</p>
+          <div className="grid gap-2 max-h-64 overflow-auto">
+            {availableCharacters.map((ch) => (
+              <label key={ch.id} className="flex items-center gap-3 border p-2">
+                <input type="checkbox" checked={selectedUserIds.includes(ch.owner?.id)} onChange={() => toggleSelectUser(ch.owner?.id)} />
+                <div>
+                  <div className="text-sm text-white">{ch.codename || ch.name} {ch.owner ? `(${ch.owner.login})` : '(NPC)'}</div>
+                  <div className="text-xs text-slate-400">{ch.is_online ? 'online' : ch.user_id ? 'offline' : 'npc'}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-slate-300">Tempo de prontidão (s)</label>
+            <input type="number" min="5" value={inviteExpiresIn} onChange={(e) => setInviteExpiresIn(Number(e.target.value))} className="w-24 border border-white/10 bg-[#0c1528] px-3 py-2 text-white outline-none" />
+          </div>
+
+          <div className="grid gap-2">
+            <div className="text-sm text-slate-300">Resultados:</div>
+            <div className="flex gap-3">
+              <div className="flex-1 border p-3">
+                <div className="text-xs text-slate-400">Aceitaram</div>
+                {inviteResponses.accepted.map((u) => <div key={u} className="text-sm text-white">User #{u}</div>)}
+              </div>
+              <div className="flex-1 border p-3">
+                <div className="text-xs text-slate-400">Recusaram</div>
+                {inviteResponses.declined.map((u) => <div key={u} className="text-sm text-white">User #{u}</div>)}
+              </div>
+              <div className="flex-1 border p-3">
+                <div className="text-xs text-slate-400">Pendente</div>
+                {inviteResponses.pending.map((u) => <div key={u} className="text-sm text-white">User #{u}</div>)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

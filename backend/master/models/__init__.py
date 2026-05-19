@@ -6,6 +6,7 @@ from . import (
     attribute_model,
     batalha_model,
     batalha_participante_model,
+    fight_participant_model,
     character_attribute_model,
     character_habilidade_model,
     character_model,
