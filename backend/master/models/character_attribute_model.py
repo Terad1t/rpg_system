@@ -16,4 +16,5 @@ class CharacterAttribute(Base):
     buff_multiplier = Column(Float, nullable=False, default=1.0)
     calculated_at = Column(DateTime, default=datetime.utcnow)
 
-    character = relationship("Character", back_populates="attributes")
+    # Match the relationship name used in Character.character_attributes_link
+    character = relationship("Character", back_populates="character_attributes_link")

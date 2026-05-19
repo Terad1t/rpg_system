@@ -40,7 +40,7 @@ class Character(Base):
     # Relacionamentos
     raca = relationship("Raca", back_populates="characters")
     classe = relationship("Classe", back_populates="characters")
-    attributes = relationship("Attribute", back_populates="character")
+    character_attributes_link = relationship("CharacterAttribute", back_populates="character")
     inventario = relationship("Inventario", back_populates="character")
     batalha_participantes = relationship("BatalhaParticipante", back_populates="character")
     habilidades_assigned = relationship("CharacterHabilidade", back_populates="character")

@@ -9,6 +9,7 @@ import MasterCharacterManager from './MasterCharacterManager'
 import RaceManager from './RaceManager'
 import ClassManager from './ClassManager'
 import FightManager from './FightManager'
+import MasterBuffManager from './MasterBuffManager'
 import api from '../services/api'
 import StatsGrid from '../components/dashboard/StatsGrid'
 import FightStatsPanel from '../components/dashboard/FightStatsPanel'
@@ -22,6 +23,7 @@ const TABS = {
   FIGHT: 'fight',
   RACES: 'races',
   CLASSES: 'classes',
+  BUFFS: 'buffs',
   SKILLS: 'skills',
   MAP: 'map',
 }
@@ -174,6 +176,8 @@ export default function MasterDashboard() {
             <RaceManager />
           ) : activeTab === TABS.CLASSES ? (
             <ClassManager />
+          ) : activeTab === TABS.BUFFS ? (
+            <MasterBuffManager />
           ) : (
             <p className="text-secondary">Seção {activeTab} em desenvolvimento...</p>
           )}

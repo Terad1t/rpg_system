@@ -33,6 +33,7 @@ const MASTER_TABS = [
   { id: 'classes', label: 'Classes', icon: <IconBolt /> },
   { id: 'skills', label: 'Habilidades', icon: <IconSword /> },
   { id: 'map', label: 'Mapa', icon: <IconMap /> },
+  { id: 'buffs', label: 'Buffs/Debuffs', icon: <IconBolt /> },
 ]
 
 export default function Sidebar({ activeTab, onTabChange, isMaster = false, badges = {} }) {

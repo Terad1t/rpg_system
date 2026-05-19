@@ -60,8 +60,11 @@ export default function MasterCharacterManager() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [visibility, setVisibility] = useState(DEFAULT_VISIBILITY)
   const [narrativeNote, setNarrativeNote] = useState('')
-  const [quickAction, setQuickAction] = useState({ hp: '', mana: '', buffs: '', debuffs: '', addBuff: '', addDebuff: '', buffDuration: '', debuffDuration: '', removeBuff: '', removeDebuff: '', note: '' })
+  const [quickAction, setQuickAction] = useState({ buffs: '', debuffs: '', addBuff: '', addDebuff: '', buffDuration: '', debuffDuration: '', removeBuff: '', removeDebuff: '', note: '' })
   const [auditLog, setAuditLog] = useState([])
+  const [buffDefs, setBuffDefs] = useState([])
+  const [selectedBuffId, setSelectedBuffId] = useState('')
+  const [buffDurationForApply, setBuffDurationForApply] = useState('')
 
   const loadData = async () => {
     setLoading(true)
@@ -120,6 +123,16 @@ export default function MasterCharacterManager() {
       }
     }
     loadAudit()
+    // load buff definitions
+    const loadBuffs = async () => {
+      try {
+        const res = await api.get('/api/master/buffs/')
+        setBuffDefs(res.data || [])
+      } catch {
+        setBuffDefs([])
+      }
+    }
+    loadBuffs()
   }, [selectedCharacter])
 
   const filteredCharacters = useMemo(() => {
@@ -209,9 +222,8 @@ export default function MasterCharacterManager() {
 
     setSaving(true)
     try {
+      // Master is no longer allowed to change HP/Mana directly. Only apply buffs/debuffs/narrative.
       const payload = {
-        hp: quickAction.hp === '' ? undefined : Number(quickAction.hp),
-        mana: quickAction.mana === '' ? undefined : Number(quickAction.mana),
         buffs: quickAction.buffs || undefined,
         debuffs: quickAction.debuffs || undefined,
         add_buff: quickAction.addBuff || undefined,
@@ -224,7 +236,7 @@ export default function MasterCharacterManager() {
       }
       await api.post(`/api/master/characters/${selectedCharacter.id}/apply`, payload)
       setMessage({ type: 'success', text: 'Ação rápida aplicada.' })
-      setQuickAction({ hp: '', mana: '', buffs: '', debuffs: '', addBuff: '', addDebuff: '', buffDuration: '', debuffDuration: '', removeBuff: '', removeDebuff: '', note: '' })
+      setQuickAction({ buffs: '', debuffs: '', addBuff: '', addDebuff: '', buffDuration: '', debuffDuration: '', removeBuff: '', removeDebuff: '', note: '' })
       await loadData()
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao aplicar ação' })
@@ -233,29 +245,35 @@ export default function MasterCharacterManager() {
     }
   }
 
-  const applyHpDelta = async (delta) => {
-    if (!selectedCharacter) return
+  const applyAddBuffById = async () => {
+    if (!selectedCharacter || !selectedBuffId) return
+    const def = buffDefs.find((b) => String(b.id) === String(selectedBuffId))
+    if (!def) return
     setSaving(true)
     try {
-      await api.post(`/api/master/characters/${selectedCharacter.id}/apply`, { hp: delta })
-      setMessage({ type: 'success', text: `HP ${delta > 0 ? '+' : ''}${delta} aplicado.` })
+      const payload = { add_buff: def.name }
+      if (buffDurationForApply) payload.buff_duration_seconds = Number(buffDurationForApply)
+      await api.post(`/api/master/characters/${selectedCharacter.id}/apply`, payload)
+      setMessage({ type: 'success', text: `Buff ${def.name} aplicado.` })
+      setSelectedBuffId('')
+      setBuffDurationForApply('')
       await loadData()
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao aplicar HP' })
+      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao aplicar buff' })
     } finally {
       setSaving(false)
     }
   }
 
-  const applyManaDelta = async (delta) => {
+  const removeActiveEffect = async (effectName) => {
     if (!selectedCharacter) return
     setSaving(true)
     try {
-      await api.post(`/api/master/characters/${selectedCharacter.id}/apply`, { mana: delta })
-      setMessage({ type: 'success', text: `Mana ${delta > 0 ? '+' : ''}${delta} aplicado.` })
+      await api.post(`/api/master/characters/${selectedCharacter.id}/apply`, { remove_buff: effectName })
+      setMessage({ type: 'success', text: `Efeito ${effectName} removido.` })
       await loadData()
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao aplicar Mana' })
+      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao remover efeito' })
     } finally {
       setSaving(false)
     }
@@ -530,33 +548,45 @@ export default function MasterCharacterManager() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="flex flex-col">
-                    <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">HP delta</label>
-                    <div className="flex items-center gap-3 flex-1">
-                      <input type="number" value={quickAction.hp} onChange={(e) => setQuickAction((prev) => ({ ...prev, hp: e.target.value }))} className="flex-1 border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none text-lg" placeholder="-10 ou 20" />
-                      <div className="flex flex-col gap-2">
-                        <button type="button" onClick={() => applyHpDelta(1)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">+1</button>
-                        <button type="button" onClick={() => applyHpDelta(5)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">+5</button>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <button type="button" onClick={() => applyHpDelta(-1)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">-1</button>
-                        <button type="button" onClick={() => applyHpDelta(-5)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">-5</button>
-                      </div>
+                  <div>
+                    <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">Buffs ativos</label>
+                    <div className="space-y-2">
+                      {selectedCharacter.buffs ? (
+                        (function parseAndRender() {
+                          try {
+                            const arr = typeof selectedCharacter.buffs === 'string' ? JSON.parse(selectedCharacter.buffs) : selectedCharacter.buffs || []
+                            return arr.map((bf, idx) => (
+                              <div key={idx} className="flex items-center justify-between border border-white/10 p-2">
+                                <div>
+                                  <div className="text-sm text-white">{bf.name}</div>
+                                  <div className="text-xs text-slate-400">{bf.expires_at ? `expira ${bf.expires_at}` : 'sem duração'}</div>
+                                </div>
+                                <div>
+                                  <button type="button" onClick={() => removeActiveEffect(bf.name)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">Remover</button>
+                                </div>
+                              </div>
+                            ))
+                          } catch (e) {
+                            return <div className="text-sm text-slate-400">Formato inválido</div>
+                          }
+                        })()
+                      ) : (
+                        <div className="text-sm text-slate-400">Sem buffs ativos</div>
+                      )}
                     </div>
                   </div>
-                  <div className="flex flex-col">
-                    <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">Mana delta</label>
-                    <div className="flex items-center gap-3 flex-1">
-                      <input type="number" value={quickAction.mana} onChange={(e) => setQuickAction((prev) => ({ ...prev, mana: e.target.value }))} className="flex-1 border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none text-lg" placeholder="-5 ou 5" />
-                      <div className="flex flex-col gap-2">
-                        <button type="button" onClick={() => applyManaDelta(1)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">+1</button>
-                        <button type="button" onClick={() => applyManaDelta(5)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">+5</button>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <button type="button" onClick={() => applyManaDelta(-1)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">-1</button>
-                        <button type="button" onClick={() => applyManaDelta(-5)} className="px-3 py-2 text-sm border border-white/10 bg-white/5 hover:bg-white/10">-5</button>
-                      </div>
+
+                  <div>
+                    <label className="mb-2 block text-xs uppercase tracking-[0.35em] text-slate-400">Aplicar buff/debuff (usar definições)</label>
+                    <div className="flex gap-3">
+                      <select value={selectedBuffId} onChange={(e) => setSelectedBuffId(e.target.value)} className="flex-1 border border-white/10 bg-[#0c1528] px-4 py-3 text-white outline-none">
+                        <option value="">Selecione um buff/debuff</option>
+                        {buffDefs.map((b) => <option key={b.id} value={b.id}>{b.name} ({b.kind})</option>)}
+                      </select>
+                      <input type="number" min="1" value={buffDurationForApply} onChange={(e) => setBuffDurationForApply(e.target.value)} placeholder="duração (s)" className="w-28 border border-white/10 bg-[#0c1528] px-3 py-3 text-white outline-none text-center" />
+                      <button type="button" onClick={applyAddBuffById} className="px-4 py-3 border border-white/10 bg-white/5">Aplicar</button>
                     </div>
+                    <p className="text-xs text-slate-400 mt-2">Observação: use o painel de Buffs/Debuffs para criar ou editar definições.</p>
                   </div>
                 </div>
 

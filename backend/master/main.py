@@ -35,6 +35,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ..player.controllers.player_character_controller import router as player_character_router
 from ..player.controllers.player_panel_controller import router as player_panel_router
 from .controllers.master_character_controller import router as master_character_router
+from .controllers.master_buff_controller import router as master_buff_router
 
 # Importa todos os modelos para criar as tabelas
 from .models import (
@@ -63,6 +64,7 @@ from .models import (
     attribute_distribution_log_model,
     character_habilidade_model,
     master_audit_model,
+    buff_debuff_model,
 )
 
 from .services.auth_services import initialize_master_if_not_exists
@@ -132,3 +134,4 @@ app.include_router(websocket_router)
 app.include_router(player_character_router, prefix="/api")
 app.include_router(player_panel_router, prefix="/api")
 app.include_router(master_character_router, prefix="/api")
+app.include_router(master_buff_router, prefix="/api")

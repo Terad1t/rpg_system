@@ -11,4 +11,4 @@ class Attribute(Base):
     value = Column(Integer, nullable=False)
 
     # Relacionamento
-    character = relationship("Character", back_populates="attributes")
+    character = relationship("Character", backref="legacy_attributes")
