@@ -15,9 +15,11 @@ export function useInventoryWebSocket(characterId) {
     }
 
     try {
+      const role = window.location.pathname.startsWith('/master') ? 'master' : (window.location.pathname.startsWith('/player') ? 'player' : null)
+      const token = role ? localStorage.getItem(`token:${role}`) : localStorage.getItem('token')
       const response = await fetch(`/api/characters/${characterId}/inventory/`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       if (!response.ok) {
@@ -47,15 +49,19 @@ export function useInventoryWebSocket(characterId) {
   useEffect(() => {
     if (!characterId) return;
 
-    const token = localStorage.getItem("token");
+    const role = window.location.pathname.startsWith('/master') ? 'master' : (window.location.pathname.startsWith('/player') ? 'player' : null)
+    const token = role ? localStorage.getItem(`token:${role}`) : localStorage.getItem('token')
     if (!token) {
       setLoading(false);
       return;
     }
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws/inventory/${characterId}`;
+    const wsBase = import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.hostname}:8000`;
+    const wsUrl = `${wsBase}/ws/inventory/${characterId}`;
 
-    const ws = new WebSocket(wsUrl, ['bearer', token]);
+    const sep = wsUrl.includes('?') ? '&' : '?'
+    const wsWithToken = `${wsUrl}${sep}token=${encodeURIComponent(token)}`
+    const ws = new WebSocket(wsWithToken);
 
     ws.onopen = () => {
       setIsConnected(true);

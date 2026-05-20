@@ -131,4 +131,17 @@ def get_websocket_token(websocket: WebSocket) -> Optional[str]:
         if protocols:
             return protocols[-1]
 
+    # Also accept token via query string: ws://.../path?token=XYZ
+    try:
+        qs = websocket.scope.get('query_string', b'')
+        if isinstance(qs, bytes):
+            qs = qs.decode()
+        from urllib.parse import parse_qs
+        params = parse_qs(qs)
+        token_list = params.get('token') or params.get('access_token')
+        if token_list:
+            return token_list[0]
+    except Exception:
+        pass
+
     return None

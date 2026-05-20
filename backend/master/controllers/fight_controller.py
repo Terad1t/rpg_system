@@ -70,7 +70,7 @@ def delete_existing_fight(fight_id: int, db: Session = Depends(get_db), current_
 
 
 @router.post("/{fight_id}/entries", response_model=FightEntryRead, status_code=status.HTTP_201_CREATED)
-def add_entry(fight_id: int, payload: FightEntryCreate, db: Session = Depends(get_db), current_master=Depends(get_current_master)):
+async def add_entry(fight_id: int, payload: FightEntryCreate, db: Session = Depends(get_db), current_master=Depends(get_current_master)):
     entry = add_fight_entry(db, fight_id, payload)
     if not entry:
         raise HTTPException(status_code=404, detail="Fight not found")
@@ -101,7 +101,7 @@ def add_entry(fight_id: int, payload: FightEntryCreate, db: Session = Depends(ge
 
 
 @router.post("/{fight_id}/invite")
-def invite_players(fight_id: int, payload: dict, db: Session = Depends(get_db), current_master=Depends(get_current_master)):
+async def invite_players(fight_id: int, payload: dict, db: Session = Depends(get_db), current_master=Depends(get_current_master)):
     """Invite a list of users to the fight. payload: { "user_ids": [1,2], "expires_in": 20 }"""
     user_ids = payload.get("user_ids", [])
     expires_in = int(payload.get("expires_in", 20))
@@ -171,7 +171,7 @@ def invite_players(fight_id: int, payload: dict, db: Session = Depends(get_db), 
 
 
 @router.post("/{fight_id}/respond")
-def respond_invite(fight_id: int, payload: dict, db: Session = Depends(get_db)):
+async def respond_invite(fight_id: int, payload: dict, db: Session = Depends(get_db)):
     """Player responds to an invite: { "user_id": 5, "accept": true }"""
     user_id = payload.get("user_id")
     accept = bool(payload.get("accept", False))
@@ -204,7 +204,7 @@ def get_responses(fight_id: int, db: Session = Depends(get_db), current_master=D
 
 
 @router.put("/{fight_id}/start")
-def start_fight(fight_id: int, db: Session = Depends(get_db), current_master=Depends(get_current_master)):
+async def start_fight(fight_id: int, db: Session = Depends(get_db), current_master=Depends(get_current_master)):
     # mark fight as in_progress and notify accepted participants
     payload = FightUpdate(status="in_progress")
     fight = update_fight(db, fight_id, payload)

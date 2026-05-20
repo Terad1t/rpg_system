@@ -3,6 +3,49 @@ import api from '../services/api'
 
 const AuthContext = createContext()
 
+function getStorageKeys(role) {
+  return {
+    token: role ? `token:${role}` : 'token',
+    user: role ? `user:${role}` : 'user',
+  }
+}
+
+function getRouteRole() {
+  const path = window.location.pathname || ''
+  if (path.startsWith('/master')) return 'master'
+  if (path.startsWith('/player')) return 'player'
+  return null
+}
+
+function loadSessionForRole(role) {
+  const { token, user } = getStorageKeys(role)
+  const storedToken = localStorage.getItem(token)
+  const storedUser = localStorage.getItem(user)
+
+  if (!storedToken || !storedUser) return null
+
+  try {
+    return { token: storedToken, user: JSON.parse(storedUser) }
+  } catch {
+    return null
+  }
+}
+
+function loadLegacySessionForRole(role) {
+  const storedToken = localStorage.getItem('token')
+  const storedUser = localStorage.getItem('user')
+
+  if (!storedToken || !storedUser) return null
+
+  try {
+    const userData = JSON.parse(storedUser)
+    if (role && userData?.role !== role) return null
+    return { token: storedToken, user: userData }
+  } catch {
+    return null
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -10,13 +53,22 @@ export function AuthProvider({ children }) {
 
   // Carregar usuário do localStorage ao iniciar
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    const userData = localStorage.getItem('user')
-    
-    if (token && userData) {
-      setUser(JSON.parse(userData))
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    console.log('[AuthContext] useEffect start, pathname=', window.location.pathname)
+    const preferredRole = getRouteRole()
+    const session = loadSessionForRole(preferredRole)
+      || loadLegacySessionForRole(preferredRole)
+      || loadSessionForRole('master')
+      || loadSessionForRole('player')
+      || loadLegacySessionForRole('master')
+      || loadLegacySessionForRole('player')
+
+    if (session) {
+      setUser(session.user)
+      api.defaults.headers.common['Authorization'] = `Bearer ${session.token}`
+      localStorage.setItem('active_role', session.user.role)
+      console.log('[AuthContext] session loaded from storage for role', session.user.role)
     }
+    console.log('[AuthContext] setting loading false')
     setLoading(false)
   }, [])
 
@@ -30,9 +82,11 @@ export function AuthProvider({ children }) {
       
       const { access_token, user_id, role } = response.data
       const userData = { id: user_id, login, role }
-      
-      localStorage.setItem('token', access_token)
-      localStorage.setItem('user', JSON.stringify(userData))
+
+      const { token, user } = getStorageKeys(role)
+      localStorage.setItem(token, access_token)
+      localStorage.setItem(user, JSON.stringify(userData))
+      localStorage.setItem('active_role', role)
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
       
       setUser(userData)
@@ -47,8 +101,11 @@ export function AuthProvider({ children }) {
   }
 
   const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    const role = user?.role || localStorage.getItem('active_role')
+    const { token, user: userKey } = getStorageKeys(role)
+    localStorage.removeItem(token)
+    localStorage.removeItem(userKey)
+    localStorage.removeItem('active_role')
     delete api.defaults.headers.common['Authorization']
     setUser(null)
   }

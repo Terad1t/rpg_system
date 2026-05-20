@@ -195,18 +195,38 @@ export default function FightManager() {
 
   const openInviteModal = async (fightId) => {
     if (!fightId) return
-    // load characters to allow selecting participants
     try {
-      const res = await api.get('/api/master/characters/')
-      const chars = res.data || []
-      setAvailableCharacters(chars)
-      // preselect online players (owners)
-      const onlineUserIds = Array.from(new Set(chars.filter((c) => c.is_online && c.owner).map((c) => c.owner.id)))
-      setSelectedUserIds(onlineUserIds)
+      const [usersRes, charsRes] = await Promise.all([
+        api.get('/api/auth/users'),
+        api.get('/api/master/characters/'),
+      ])
+
+      const users = (usersRes.data || []).filter((user) => user?.role === 'player' && user?.is_active !== false)
+      const chars = charsRes.data || []
+      const charByUserId = new Map(
+        chars
+          .filter((character) => character?.user_id)
+          .map((character) => [character.user_id, character]),
+      )
+
+      const playerTargets = users.map((user) => {
+        const linkedCharacter = charByUserId.get(user.id)
+        return {
+          user_id: user.id,
+          label: linkedCharacter
+            ? `${linkedCharacter.codename || linkedCharacter.name || user.login} (${user.login})`
+            : `${user.login} (#${user.id})`,
+          character_id: linkedCharacter?.id || null,
+          login: user.login,
+        }
+      })
+
+      setAvailableCharacters(playerTargets)
+      setSelectedUserIds(playerTargets.map((target) => target.user_id))
       setInviteModalOpen(true)
       setInviteResponses({ accepted: [], declined: [], pending: [] })
     } catch (err) {
-      setMessage({ type: 'error', text: 'Falha ao carregar jogadores para convite.' })
+      setMessage({ type: 'error', text: err.response?.data?.detail || 'Falha ao carregar jogadores para convite.' })
     }
   }
 
@@ -431,11 +451,15 @@ export default function FightManager() {
           <p className="text-sm text-slate-300">Selecione os jogadores/usuários para convidar. A janela de prontidão será de <strong>{inviteExpiresIn}s</strong>.</p>
           <div className="grid gap-2 max-h-64 overflow-auto">
             {availableCharacters.map((ch) => (
-              <label key={ch.id} className="flex items-center gap-3 border p-2">
-                <input type="checkbox" checked={selectedUserIds.includes(ch.owner?.id)} onChange={() => toggleSelectUser(ch.owner?.id)} />
+              <label key={ch.user_id} className="flex items-center gap-3 border p-2">
+                <input
+                  type="checkbox"
+                  checked={selectedUserIds.includes(ch.user_id)}
+                  onChange={() => toggleSelectUser(ch.user_id)}
+                />
                 <div>
-                  <div className="text-sm text-white">{ch.codename || ch.name} {ch.owner ? `(${ch.owner.login})` : '(NPC)'}</div>
-                  <div className="text-xs text-slate-400">{ch.is_online ? 'online' : ch.user_id ? 'offline' : 'npc'}</div>
+                  <div className="text-sm text-white">{ch.label}</div>
+                  <div className="text-xs text-slate-400">Pronto para convite</div>
                 </div>
               </label>
             ))}

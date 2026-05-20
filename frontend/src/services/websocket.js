@@ -13,7 +13,11 @@ class WebSocketService {
           return
         }
 
-        this.ws = new WebSocket(`${this.url}${path}`, ['bearer', token])
+        // Avoid sending token via Sec-WebSocket-Protocol (some browsers require server to echo it).
+        // Use query param instead so server can read it from the handshake headers or query.
+        const sep = path.includes('?') ? '&' : '?'
+        const urlWithToken = `${this.url}${path}${sep}token=${encodeURIComponent(token)}`
+        this.ws = new WebSocket(urlWithToken)
 
         this.ws.onopen = () => {
           console.log('WebSocket conectado')

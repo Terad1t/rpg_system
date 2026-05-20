@@ -56,12 +56,7 @@ async def websocket_updates_endpoint(
 
     username = user.login  # Usa o login como username
 
-    await broadcast_manager.connect(
-        websocket,
-        user_id,
-        username,
-        subprotocol="bearer" if websocket.headers.get("sec-websocket-protocol") else None,
-    )
+    await broadcast_manager.connect(websocket, user_id, username)
 
     try:
         # Mantém a conexão aberta para receber atualizações

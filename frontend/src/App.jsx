@@ -3,6 +3,8 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import LoginPage from './pages/LoginPage'
 import PlayerCharacterSelectPage from './pages/PlayerCharacterSelectPage'
 import PlayerSessionPage from './pages/PlayerSessionPage'
+import PlayerFightRoomPage from './pages/PlayerFightRoomPage'
+import PlayerBattlePage from './pages/PlayerBattlePage'
 import MasterDashboard from './pages/MasterDashboard'
 
 function PrivateRoute({ children, requiredRole }) {
@@ -47,6 +49,22 @@ function AppRoutes() {
         element={
           <PrivateRoute requiredRole="player">
             <PlayerCharacterSelectPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/player/fight/:fightId"
+        element={
+          <PrivateRoute requiredRole="player">
+            <PlayerFightRoomPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/player/fight/:fightId/battle"
+        element={
+          <PrivateRoute requiredRole="player">
+            <PlayerBattlePage />
           </PrivateRoute>
         }
       />

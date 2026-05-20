@@ -149,6 +149,18 @@ export default function PlayerSessionPage() {
   const [inviteModal, setInviteModal] = useState(null)
   const selectionStorageKey = user?.id ? `player-dashboard:selected-character:${user.id}` : null
 
+  const openFightRoom = (fightId, fightName = null, started = false) => {
+    if (!fightId) return
+    navigate(`/player/fight/${fightId}`, {
+      replace: true,
+      state: {
+        fightId,
+        fightName: fightName || `#${fightId}`,
+        started,
+      },
+    })
+  }
+
   const loadPanel = async () => {
     try {
       const response = await api.get('/api/player-panel/')
@@ -194,6 +206,13 @@ export default function PlayerSessionPage() {
       if (latestNotification?.type === 'fight_invite') {
         setInviteModal(latestNotification.data || { fight_id: latestNotification?.data?.fight_id })
       }
+
+      if (latestNotification?.type === 'fight_started') {
+        const fightId = Number(latestNotification?.data?.fight_id)
+        if (fightId) {
+          openFightRoom(fightId, latestNotification?.data?.name || latestNotification?.data?.fight_name, true)
+        }
+      }
     }
   }, [notifications])
 
@@ -201,6 +220,9 @@ export default function PlayerSessionPage() {
     if (!inviteModal) return
     try {
       await api.post(`/api/fights/${inviteModal.fight_id}/respond`, { user_id: user.id, accept })
+      if (accept) {
+        openFightRoom(inviteModal.fight_id, inviteModal.name, false)
+      }
     } catch (err) {
       console.error('Erro ao responder invite', err)
     } finally {

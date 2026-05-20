@@ -6,12 +6,16 @@ export function useCharacterViewWebSocket(characterId) {
 
   useEffect(() => {
     if (!characterId) return
-    const token = localStorage.getItem('token')
+    const role = window.location.pathname.startsWith('/master') ? 'master' : (window.location.pathname.startsWith('/player') ? 'player' : null)
+    const token = role ? localStorage.getItem(`token:${role}`) : localStorage.getItem('token')
     if (!token) return
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${wsProtocol}//${window.location.host}/api/ws/character-view/${characterId}`
+    const wsBase = import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.hostname}:8000`
+    const wsUrl = `${wsBase}/api/ws/character-view/${characterId}`
 
-    const ws = new WebSocket(wsUrl, ['bearer', token])
+    const sep = wsUrl.includes('?') ? '&' : '?'
+    const wsWithToken = `${wsUrl}${sep}token=${encodeURIComponent(token)}`
+    const ws = new WebSocket(wsWithToken)
 
     ws.onopen = () => setConnected(true)
     ws.onmessage = (e) => {

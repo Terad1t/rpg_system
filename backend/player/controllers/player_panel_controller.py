@@ -34,8 +34,12 @@ def _serialize_item(item: Item | None):
 
 def _serialize_character(character: Character):
     attributes = {}
-    for attribute in getattr(character, "attributes", []) or []:
-        attributes[attribute.name] = attribute.value
+    for attribute in getattr(character, "character_attributes_link", []) or []:
+        # CharacterAttribute model uses 'name' and 'value'
+        try:
+            attributes[attribute.name] = attribute.value
+        except Exception:
+            pass
 
     return {
         "id": character.id,
@@ -200,7 +204,7 @@ def view_character(character_id: int, current_user: CurrentUser = Depends(get_cu
             joinedload(Character.raca),
             joinedload(Character.classe),
             joinedload(Character.current_map),
-            joinedload(Character.attributes),
+            joinedload(Character.character_attributes_link),
             joinedload(Character.inventario).joinedload(Inventario.item),
         )
         .filter(Character.id == character_id)
@@ -223,7 +227,7 @@ def get_player_panel(current_player: CurrentUser = Depends(get_current_player), 
             joinedload(Character.raca),
             joinedload(Character.classe),
             joinedload(Character.current_map),
-            joinedload(Character.attributes),
+            joinedload(Character.character_attributes_link),
             joinedload(Character.inventario).joinedload(Inventario.item),
         )
         .filter(Character.user_id == user_id)

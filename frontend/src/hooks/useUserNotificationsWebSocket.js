@@ -1,5 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 
+function getRouteRole() {
+  const path = window.location.pathname || "";
+  if (path.startsWith("/master")) return "master";
+  if (path.startsWith("/player")) return "player";
+  return localStorage.getItem("active_role") || null;
+}
+
 export function useUserNotificationsWebSocket(userId) {
   const [isConnected, setIsConnected] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -11,24 +18,29 @@ export function useUserNotificationsWebSocket(userId) {
   useEffect(() => {
     if (!userId) return;
 
-    const token = localStorage.getItem("token");
+    const routeRole = getRouteRole();
+    const token = routeRole ? localStorage.getItem(`token:${routeRole}`) : localStorage.getItem("token");
     if (!token) return;
-    const storedUser = localStorage.getItem("user");
-    let role = null;
+    const storedUser = routeRole ? localStorage.getItem(`user:${routeRole}`) : localStorage.getItem("user");
+    let resolvedRole = routeRole;
 
     if (storedUser) {
       try {
-        role = JSON.parse(storedUser)?.role || null;
+        resolvedRole = JSON.parse(storedUser)?.role || resolvedRole || null;
       } catch {
-        role = null;
+        resolvedRole = resolvedRole || null;
       }
     }
 
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsPath = role === "master" ? `/ws/user-updates/${userId}` : "/api/updates/ws";
-    const wsUrl = `${wsProtocol}//${window.location.host}${wsPath}`;
+    const wsBase = import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.hostname}:8000`;
+    // Fight invites, fight responses and character notifications all arrive on the per-user channel.
+    const wsPath = `/ws/user-updates/${userId}`;
+    const wsUrl = `${wsBase}${wsPath}`;
 
-    const ws = new WebSocket(wsUrl, ['bearer', token]);
+    const sep = wsUrl.includes('?') ? '&' : '?'
+    const wsWithToken = `${wsUrl}${sep}token=${encodeURIComponent(token)}`
+    const ws = new WebSocket(wsWithToken);
 
     ws.onopen = () => {
       setIsConnected(true);
