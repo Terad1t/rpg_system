@@ -117,6 +117,18 @@ export default function PlayerFightRoomPage() {
     navigate('/player', { replace: true })
   }
 
+  const [sentReady, setSentReady] = useState(false)
+
+  const sendReady = async () => {
+    if (!fightId) return
+    try {
+      await api.post(`/api/fights/${fightId}/entries/player`, { action: 'ready', actor_type: 'player', actor_name: user?.login })
+      setSentReady(true)
+    } catch (err) {
+      console.error('Falha ao enviar ready', err)
+    }
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden text-white">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.18),transparent_28%),radial-gradient(circle_at_80%_10%,rgba(255,122,24,0.12),transparent_24%),linear-gradient(180deg,rgba(3,7,18,0.98)_0%,rgba(7,12,25,0.96)_100%)]" />
@@ -202,7 +214,13 @@ export default function PlayerFightRoomPage() {
             </div>
           )}
 
-          <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap gap-3">
+            {!sentReady && fightStatus === 'waiting' && (
+              <Button size="sm" onClick={sendReady}>Pronto</Button>
+            )}
+            {sentReady && (
+              <div className="px-3 py-2 rounded border border-white/10 bg-white/5 text-sm text-slate-300">Pronto enviado</div>
+            )}
             <Button size="sm" onClick={handleReturnToSession}>Voltar à sessão</Button>
             <Button size="sm" variant="ghost" onClick={logout}>Sair</Button>
           </div>

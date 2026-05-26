@@ -47,6 +47,16 @@ export default function PlayerBattlePage() {
 
   const handleBack = () => navigate('/player', { replace: true })
 
+  const sendTestAttack = async () => {
+    try {
+      // simple test attack with random small damage
+      const damage = Math.floor(Math.random() * 6) + 1
+      await api.post(`/api/fights/${fightId}/entries/player`, { actor_type: 'player', actor_name: user?.login, action: 'attack', value: damage, damage })
+    } catch (err) {
+      console.error('Falha ao enviar ataque de teste', err)
+    }
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden text-white">
       <div className="relative mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -58,9 +68,13 @@ export default function PlayerBattlePage() {
               <p className="text-sm text-slate-300">Entradas de combate em tempo real</p>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleBack}>Voltar</Button>
+                  <Button size="sm" onClick={handleBack}>Voltar</Button>
               <Button size="sm" variant="ghost" onClick={logout}>Sair</Button>
             </div>
+          </div>
+
+          <div className="mt-4">
+            <Button size="sm" onClick={sendTestAttack}>Enviar ataque (teste)</Button>
           </div>
 
           <div className="mt-6">

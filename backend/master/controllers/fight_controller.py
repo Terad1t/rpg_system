@@ -6,7 +6,7 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from ..database.connection import get_db
-from ..utils.auth_dependencies import get_current_master
+from ..utils.auth_dependencies import get_current_master, get_current_player
 from ..schemas.fight_schema import FightCreate, FightUpdate, FightRead, FightEntryCreate, FightEntryRead
 from ..services.fight_services import (
     add_fight_entry,
@@ -241,3 +241,51 @@ def delete_entry(fight_id: int, entry_id: int, db: Session = Depends(get_db), cu
     if not entry:
         raise HTTPException(status_code=404, detail="Fight entry not found")
     return entry
+
+
+@router.post("/{fight_id}/entries/player", status_code=status.HTTP_201_CREATED)
+async def player_add_entry(fight_id: int, payload: dict, db: Session = Depends(get_db), current_player=Depends(get_current_player)):
+    """Player submits a simple action/entry to the fight. payload is flexible but should contain actor_name, actor_type, damage/healing or action/value."""
+    # attempt to persist via service if available
+    try:
+        # normalize into FightEntryCreate shape when possible
+        entry_payload = FightEntryCreate(
+            actor_type=payload.get('actor_type', 'player'),
+            actor_name=payload.get('actor_name', current_player.login if hasattr(current_player, 'login') else f'user:{current_player.user_id}'),
+            damage=int(payload.get('damage', payload.get('value', 0) or 0)),
+            healing=int(payload.get('healing', 0)),
+        )
+    except Exception:
+        # fallback: create minimal payload
+        entry_payload = FightEntryCreate(actor_type='player', actor_name=str(payload.get('actor_name', 'player')), damage=0, healing=0)
+
+    entry = add_fight_entry(db, fight_id, entry_payload)
+
+    # broadcast to known participants (best-effort)
+    participants = fight_participants.get(fight_id)
+    message = {
+        'type': 'fight_event',
+        'fight_id': fight_id,
+        'entry': {
+            'id': getattr(entry, 'id', None),
+            'actor_character_id': payload.get('actor_character_id'),
+            'target_character_id': payload.get('target_character_id'),
+            'action': payload.get('action'),
+            'value': payload.get('value', payload.get('damage')),
+            'timestamp': getattr(entry, 'created_at', None).isoformat() if getattr(entry, 'created_at', None) else None,
+        }
+    }
+    if participants:
+        for user_id in participants:
+            try:
+                asyncio.create_task(inventory_manager.broadcast_to_user(user_id, 'fight_event', message))
+            except Exception:
+                pass
+
+    # always broadcast to the submitting player as well
+    try:
+        asyncio.create_task(inventory_manager.broadcast_to_user(current_player.user_id, 'fight_event', message))
+    except Exception:
+        pass
+
+    return {'message': 'entry recorded', 'entry_id': getattr(entry, 'id', None)}
