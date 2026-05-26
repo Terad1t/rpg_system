@@ -254,6 +254,9 @@ async def player_add_entry(fight_id: int, payload: dict, db: Session = Depends(g
             actor_name=payload.get('actor_name', current_player.login if hasattr(current_player, 'login') else f'user:{current_player.user_id}'),
             damage=int(payload.get('damage', payload.get('value', 0) or 0)),
             healing=int(payload.get('healing', 0)),
+            action=payload.get('action'),
+            value=int(payload.get('value', 0) or 0),
+            card_id=payload.get('card_id'),
         )
     except Exception:
         # fallback: create minimal payload
@@ -270,8 +273,9 @@ async def player_add_entry(fight_id: int, payload: dict, db: Session = Depends(g
             'id': getattr(entry, 'id', None),
             'actor_character_id': payload.get('actor_character_id'),
             'target_character_id': payload.get('target_character_id'),
-            'action': payload.get('action'),
-            'value': payload.get('value', payload.get('damage')),
+            'action': entry.action if entry is not None and hasattr(entry, 'action') else payload.get('action'),
+            'value': entry.value if entry is not None and hasattr(entry, 'value') else payload.get('value', payload.get('damage')),
+            'card_id': entry.card_id if entry is not None and hasattr(entry, 'card_id') else payload.get('card_id'),
             'timestamp': getattr(entry, 'created_at', None).isoformat() if getattr(entry, 'created_at', None) else None,
         }
     }

@@ -17,6 +17,8 @@ export default function PlayerBattlePage() {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [selectedAction, setSelectedAction] = useState('attack')
+  const [actionValue, setActionValue] = useState(1)
 
   const relevantEntries = useMemo(() => {
     return entries.filter((e) => Number(e.fight_id) === fightId)
@@ -49,9 +51,11 @@ export default function PlayerBattlePage() {
 
   const sendTestAttack = async () => {
     try {
-      // simple test attack with random small damage
-      const damage = Math.floor(Math.random() * 6) + 1
-      await api.post(`/api/fights/${fightId}/entries/player`, { actor_type: 'player', actor_name: user?.login, action: 'attack', value: damage, damage })
+      // send configured action
+      const payload = { actor_type: 'player', actor_name: user?.login, action: selectedAction, value: Number(actionValue) }
+      if (selectedAction === 'attack') payload.damage = Number(actionValue)
+      if (selectedAction === 'heal') payload.healing = Number(actionValue)
+      await api.post(`/api/fights/${fightId}/entries/player`, payload)
     } catch (err) {
       console.error('Falha ao enviar ataque de teste', err)
     }
@@ -74,7 +78,16 @@ export default function PlayerBattlePage() {
           </div>
 
           <div className="mt-4">
-            <Button size="sm" onClick={sendTestAttack}>Enviar ataque (teste)</Button>
+            <div className="flex items-center gap-3">
+              <select className="rounded px-3 py-2 bg-[#0c1528]" value={selectedAction} onChange={(e) => setSelectedAction(e.target.value)}>
+                <option value="attack">Ataque</option>
+                <option value="heal">Cura</option>
+                <option value="defend">Defesa</option>
+                <option value="skill">Habilidade</option>
+              </select>
+              <input type="number" min="0" className="rounded px-3 py-2 bg-[#0c1528] w-24" value={actionValue} onChange={(e) => setActionValue(e.target.value)} />
+              <Button size="sm" onClick={sendTestAttack}>Enviar</Button>
+            </div>
           </div>
 
           <div className="mt-6">

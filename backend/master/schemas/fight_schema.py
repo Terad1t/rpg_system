@@ -15,6 +15,9 @@ class FightEntryCreate(BaseModel):
     actor_name: str = Field(..., min_length=1)
     damage: int = Field(0, ge=0)
     healing: int = Field(0, ge=0)
+    action: str | None = None
+    value: int | None = None
+    card_id: int | None = None
 
     @field_validator("actor_type")
     def validate_actor_type(cls, value):
@@ -28,6 +31,9 @@ class FightEntryRead(FightEntryCreate):
     id: int
     fight_id: int
     created_at: datetime
+    action: str | None = None
+    value: int | None = None
+    card_id: int | None = None
 
     class Config:
         from_attributes = True

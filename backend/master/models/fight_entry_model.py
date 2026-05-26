@@ -13,6 +13,9 @@ class FightEntry(Base):
     actor_name = Column(String, nullable=False)
     damage = Column(Integer, default=0)
     healing = Column(Integer, default=0)
+    action = Column(String, nullable=True)
+    value = Column(Integer, default=0)
+    card_id = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     fight = relationship("Fight", back_populates="entries")

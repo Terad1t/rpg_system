@@ -76,6 +76,9 @@ def add_fight_entry(db: Session, fight_id: int, payload: FightEntryCreate):
         actor_name=payload.actor_name,
         damage=payload.damage,
         healing=payload.healing,
+        action=getattr(payload, 'action', None),
+        value=getattr(payload, 'value', None) or 0,
+        card_id=getattr(payload, 'card_id', None),
     )
     db.add(entry)
     db.commit()
