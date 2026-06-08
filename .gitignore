@@ -47,31 +47,29 @@ env.bak/
 venv.bak/
 
 # IDE and editors
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-.DS_Store
-*.sublime-project
-*.sublime-workspace
+pipeline-data/vscode/
+pipeline-data/swp
+pipeline-data/swo
+pipeline-data/~
+pipeline-data/sublime-project
+pipeline-data/sublime-workspace
 
 # Environment variables (sensitive)
-.env
-.env.local
-.env.*.local
+pipeline-data/env
+pipeline-data/env.local
+pipeline-data/env.*.local
 
 # Data files (can be regenerated)
-data/raw/
-data/processed/
-*.csv
-*.parquet
+pipeline-data/data/raw/
+pipeline-data/data/processed/
+pipeline-data/data/*.csv
+pipeline-data/data/*.parquet
 
 # Docker volumes
-postgres_data/
+pipeline-data/postgres_data/
 
 # Logs
-*.log
+pipeline-data/*.log
 logs/
 
 # uv lockfile (optional, can commit or not)
