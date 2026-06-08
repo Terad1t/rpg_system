@@ -79,5 +79,20 @@ def ensure_schema_updates() -> None:
         _ensure_column(connection, "fight_entries", "actor_name TEXT NOT NULL")
         _ensure_column(connection, "fight_entries", "damage INTEGER NOT NULL DEFAULT 0")
         _ensure_column(connection, "fight_entries", "healing INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(connection, "fight_entries", "action TEXT")
+        _ensure_column(connection, "fight_entries", "value INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(connection, "fight_entries", "card_id INTEGER")
         _ensure_column(connection, "fight_entries", "created_at DATETIME")
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS fight_turns (
+                id INTEGER PRIMARY KEY,
+                fight_id INTEGER NOT NULL UNIQUE,
+                current_user_id INTEGER,
+                current_index INTEGER DEFAULT 0,
+                phase TEXT DEFAULT 'waiting',
+                updated_at DATETIME
+            )
+            """
+        )
         connection.commit()

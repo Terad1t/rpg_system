@@ -59,6 +59,17 @@ async def websocket_inventory_endpoint(
         inventory_manager.unsubscribe_from_character_inventory(websocket, character_id)
 
 
+@router.get('/debug/user-subs')
+def debug_user_subscriptions():
+    """Debug endpoint: returns a map of user_id -> subscriber count"""
+    try:
+        data = {uid: len(sockets) for uid, sockets in inventory_manager.user_subscriptions.items()}
+        return {"ok": True, "users": data}
+    except Exception:
+        logging.exception('Failed to read user_subscriptions')
+        return {"ok": False, "error": "internal"}
+
+
 @router.websocket("/user-updates/{user_id}")
 async def websocket_user_updates_endpoint(
     websocket: WebSocket,

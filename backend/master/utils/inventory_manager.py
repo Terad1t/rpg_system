@@ -28,6 +28,7 @@ class InventoryManager:
         if user_id not in self.user_subscriptions:
             self.user_subscriptions[user_id] = []
         self.user_subscriptions[user_id].append(websocket)
+        logging.info("Subscribed websocket for user %s (total=%s)", user_id, len(self.user_subscriptions[user_id]))
     
     async def broadcast_inventory_update(
         self, 
@@ -119,6 +120,7 @@ class InventoryManager:
     ):
         """Emite notificações gerais para um usuário"""
         if user_id not in self.user_subscriptions:
+            logging.debug("No active websocket subscribers for user %s when sending %s", user_id, notification_type)
             return
         
         message = {
@@ -141,6 +143,7 @@ class InventoryManager:
         for ws in disconnected_sockets:
             if ws in self.user_subscriptions[user_id]:
                 self.user_subscriptions[user_id].remove(ws)
+        logging.info("Broadcasted %s to user %s (remaining connections=%s)", notification_type, user_id, len(self.user_subscriptions.get(user_id, [])))
     
     def unsubscribe_from_character_inventory(self, websocket: WebSocket, character_id: int):
         """Remove inscrição de um websocket"""

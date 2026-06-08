@@ -20,6 +20,7 @@ dependencies = [
     "requests>=2.33.1",
     "websockets>=16.0",
     "alembic>=1.11.1",
+    "faker>=40.21.0",
 ]
 
 [project.optional-dependencies]

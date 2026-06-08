@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 
+
 function getRouteRole() {
   const path = window.location.pathname || "";
   if (path.startsWith("/master")) return "master";

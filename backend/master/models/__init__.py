@@ -1,6 +1,7 @@
 from .character_model import Character
 from .character_attribute_model import CharacterAttribute
 from .attribute_distribution_log_model import AttributeDistributionLog
+from .fight_turn_model import FightTurn
 from .attribute_model import Attribute
 from . import (
     attribute_model,
@@ -32,4 +33,5 @@ from . import (
     attribute_distribution_log_model,
     attribute_model,
     buff_debuff_model,
+    fight_turn_model,
 )

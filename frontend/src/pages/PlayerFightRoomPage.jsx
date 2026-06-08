@@ -26,6 +26,8 @@ export default function PlayerFightRoomPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [lastEvent, setLastEvent] = useState(null)
+  const [currentTurnUserId, setCurrentTurnUserId] = useState(null)
+  const [isMyTurn, setIsMyTurn] = useState(false)
 
   const loadFightData = async () => {
     if (!fightId) return
@@ -48,6 +50,16 @@ export default function PlayerFightRoomPage() {
       setError(err.response?.data?.detail || 'Não foi possível carregar os dados da luta.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadTurnInfo = async () => {
+    try {
+      const res = await api.get(`/api/fights/${fightId}/turn/me`)
+      setCurrentTurnUserId(res.data?.current_user_id || null)
+      setIsMyTurn(Boolean(res.data?.is_my_turn))
+    } catch (err) {
+      // ignore
     }
   }
 
@@ -111,7 +123,17 @@ export default function PlayerFightRoomPage() {
 
   useEffect(() => {
     loadFightData()
+    loadTurnInfo()
   }, [fightId])
+
+  useEffect(() => {
+    if (!notifications || notifications.length === 0) return
+    const latest = notifications[notifications.length - 1]
+    if (latest?.type === 'turn_changed' && Number(latest?.data?.fight_id) === fightId) {
+      setCurrentTurnUserId(latest.data?.current_user_id || null)
+      setIsMyTurn(Boolean(latest.data?.current_user_id === user?.id))
+    }
+  }, [notifications, fightId, user])
 
   const handleReturnToSession = () => {
     navigate('/player', { replace: true })
@@ -184,6 +206,9 @@ export default function PlayerFightRoomPage() {
               <p className="mt-2 text-lg font-semibold text-white">{fightName}</p>
               <p className="mt-3 text-sm text-slate-300">Jogador: {user?.login}</p>
               <p className="mt-2 text-sm text-slate-300">Código da luta: #{fightId}</p>
+                {currentTurnUserId !== null && (
+                  <p className="mt-2 text-sm text-slate-300">Vez atual: {isMyTurn ? 'Você' : `Usuário #${currentTurnUserId}`}</p>
+                )}
               {fightData?.status && <p className="mt-2 text-sm text-slate-300">Status backend: {fightData.status}</p>}
               {lastEvent && (
                 <p className="mt-3 text-xs uppercase tracking-[0.3em] text-cyan-200">

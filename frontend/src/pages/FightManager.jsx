@@ -83,10 +83,10 @@ export default function FightManager() {
 
   // apply incremental updates from WS notifications
   useEffect(() => {
-    if (!inviteModalOpen || !selectedFight || !notifications) return
+    if (!selectedFight || !notifications) return
 
     // process each new notification (notifications array is append-only)
-    const relevant = notifications.filter((n) => n && n.type && ["fight_invite_response", "fight_invite_results"].includes(n.type) && n.data?.fight_id === selectedFight.id)
+    const relevant = notifications.filter((n) => n && n.type && ["fight_invite_response", "fight_invite_results"].includes(n.type) && Number(n.data?.fight_id) === Number(selectedFight.id))
     if (relevant.length === 0) return
 
     // fold updates into current state
@@ -100,10 +100,12 @@ export default function FightManager() {
             if (!next.accepted.includes(user_id)) next.accepted.push(user_id)
             next.declined = next.declined.filter((u) => u !== user_id)
             next.pending = next.pending.filter((u) => u !== user_id)
+            setMessage({ type: 'success', text: `Jogador #${user_id} aceitou o convite da fight #${selectedFight.id}.` })
           } else {
             if (!next.declined.includes(user_id)) next.declined.push(user_id)
             next.accepted = next.accepted.filter((u) => u !== user_id)
             next.pending = next.pending.filter((u) => u !== user_id)
+            setMessage({ type: 'success', text: `Jogador #${user_id} recusou o convite da fight #${selectedFight.id}.` })
           }
         }
 
@@ -113,6 +115,7 @@ export default function FightManager() {
             declined: n.data?.declined || [],
             pending: [],
           }
+          setMessage({ type: 'success', text: `Resultados da fight #${selectedFight.id} atualizados em tempo real.` })
         }
       }
 
