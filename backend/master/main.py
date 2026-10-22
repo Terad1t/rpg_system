@@ -25,6 +25,7 @@ from .controllers.item_controller import router as item_router
 from .controllers.map_controller import router as map_router
 from .controllers.master_buff_controller import router as master_buff_router
 from .controllers.master_character_controller import router as master_character_router
+from .controllers.master_overview_controller import router as master_overview_router
 from .controllers.player_notes_controller import router as player_notes_router
 from .controllers.raca_controller import router as raca_router
 from .controllers.region_controller import router as region_router
@@ -106,6 +107,7 @@ API_ROUTERS = [
     player_notes_router,
     fight_router,
     master_character_router,
+    master_overview_router,
     master_buff_router,
     player_character_router,
     player_panel_router,

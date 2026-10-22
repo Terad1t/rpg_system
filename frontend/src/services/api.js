@@ -1,66 +1,54 @@
 import axios from 'axios'
+import { clearSession, getToken, roleFromPath } from '../lib/session'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
-
-console.log('[API] Baseurl:', API_BASE_URL)
-
-function getRouteRole() {
-  const path = window.location.pathname || ''
-  if (path.startsWith('/master')) return 'master'
-  if (path.startsWith('/player')) return 'player'
-  return localStorage.getItem('active_role') || null
-}
-
-function getTokenForRequest() {
-  const role = getRouteRole()
-  if (role) {
-    const roleToken = localStorage.getItem(`token:${role}`)
-    if (roleToken) return roleToken
-  }
-
-  return localStorage.getItem('token')
-}
+// Vazio = mesma origem (em dev o Vite faz proxy de /api e /ws para o backend).
+export const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 10000, // 10s timeout
+  timeout: 15000,
 })
 
-// Interceptor para adicionar token ao header
 api.interceptors.request.use((config) => {
-  const token = getTokenForRequest()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  console.log('[API] Request:', config.method?.toUpperCase(), config.url)
+  const token = getToken()
+  if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// Interceptor para tratar erros
 api.interceptors.response.use(
-  (response) => {
-    console.log('[API] Response OK:', response.status, response.config.url)
-    return response
-  },
+  (response) => response,
   (error) => {
-    console.error('[API] Response Error:', error.message, error.response?.status, error.config?.url)
-    if (error.response?.status === 401) {
-      // Token expirado ou inválido
-      const role = getRouteRole()
-      if (role) {
-        localStorage.removeItem(`token:${role}`)
-        localStorage.removeItem(`user:${role}`)
-      } else {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-      }
-      window.location.href = '/login'
+    const isLoginRequest = error.config?.url?.includes('/api/auth/login')
+    if (error.response?.status === 401 && !isLoginRequest) {
+      clearSession(roleFromPath() ?? undefined)
+      if (window.location.pathname !== '/login') window.location.assign('/login')
     }
     return Promise.reject(error)
-  }
+  },
 )
+
+/** Mensagem legível de um erro do axios/FastAPI (inclui erros de validação 422). */
+export function errorMessage(error, fallback = 'Algo deu errado. Tente novamente.') {
+  const detail = error?.response?.data?.detail
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail) && detail.length > 0) {
+    return detail
+      .map((item) => {
+        const field = Array.isArray(item.loc) ? item.loc.filter((part) => part !== 'body').join('.') : ''
+        return field ? `${field}: ${item.msg}` : item.msg
+      })
+      .join('; ')
+  }
+  if (error?.code === 'ECONNABORTED') return 'O servidor demorou para responder.'
+  if (error?.message === 'Network Error') return 'Não foi possível falar com o servidor.'
+  return fallback
+}
+
+/** URL absoluta para arquivos servidos pela API (ex.: /static/uploads/...). */
+export function assetUrl(path) {
+  if (!path) return null
+  if (/^https?:\/\//.test(path)) return path
+  return `${API_BASE_URL}${path}`
+}
 
 export default api

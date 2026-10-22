@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import api from '../services/api'
+import api, { errorMessage } from '../services/api'
 import { Button, Card, Modal } from '../components/common'
 import { useAuth } from '../context/AuthContext'
 import { useUserNotificationsWebSocket } from '../hooks/useUserNotificationsWebSocket'
@@ -71,8 +71,8 @@ export default function FightManager() {
       try {
         const res = await api.get(`/api/fights/${selectedFight.id}/responses`)
         if (mounted) setInviteResponses(res.data || { accepted: [], declined: [], pending: [] })
-      } catch (e) {
-        // ignore
+      } catch {
+        // A lista é atualizada pelas notificações; uma falha aqui não bloqueia o convite.
       }
     }
 
@@ -229,7 +229,7 @@ export default function FightManager() {
       setInviteModalOpen(true)
       setInviteResponses({ accepted: [], declined: [], pending: [] })
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || 'Falha ao carregar jogadores para convite.' })
+      setMessage({ type: 'error', text: errorMessage(err, 'Falha ao carregar jogadores para convite.') })
     }
   }
 
@@ -241,7 +241,7 @@ export default function FightManager() {
   const sendInvites = async () => {
     if (!selectedFight) return
     if (!selectedUserIds || selectedUserIds.length === 0) {
-      alert('Selecione pelo menos um usuário para convidar.')
+      setMessage({ type: 'error', text: 'Selecione pelo menos um jogador para convidar.' })
       return
     }
     try {
@@ -249,7 +249,7 @@ export default function FightManager() {
       setMessage({ type: 'success', text: 'Convites enviados.' })
       // keep modal open to show responses
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || 'Falha ao enviar convites' })
+      setMessage({ type: 'error', text: errorMessage(err, 'Falha ao enviar convites') })
     }
   }
 
@@ -470,7 +470,7 @@ export default function FightManager() {
 
           <div className="flex items-center gap-3">
             <label className="text-sm text-slate-300">Tempo de prontidão (s)</label>
-            <input type="number" min="5" value={inviteExpiresIn} onChange={(e) => setInviteExpiresIn(Number(e.target.value))} className="w-24 border border-white/10 bg-[#0c1528] px-3 py-2 text-white outline-none" />
+            <input type="number" min="5" max="300" aria-label="Prazo do convite em segundos" value={inviteExpiresIn} onChange={(e) => setInviteExpiresIn(Number(e.target.value))} className="w-24 border border-white/10 bg-[#0c1528] px-3 py-2 text-white outline-none" />
           </div>
 
           <div className="grid gap-2">

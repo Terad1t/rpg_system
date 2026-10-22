@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { Card, Button, Input } from '../common'
-import api from '../../services/api'
+import api, { assetUrl, errorMessage } from '../../services/api'
+
+export const CODENAME_MAX = 50
+export const DESCRIPTION_MAX = 2000
+const PORTRAIT_MAX = 2000
+const ACCEPTED_IMAGES = 'image/png,image/jpeg,image/webp'
 
 export default function PlayerCharacterEditor({ character, onUpdate }) {
   const raceName = typeof character.race === 'string' ? character.race : character.race?.name
@@ -19,16 +24,19 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
   const validateForm = () => {
     const newErrors = {}
     
-    if (formData.codename.length > 100) {
-      newErrors.codename = 'Codinome não pode ter mais de 100 caracteres'
-    }
-    
-    if (formData.description.length > 500) {
-      newErrors.description = 'Descrição não pode ter mais de 500 caracteres'
+    if (formData.codename.length > CODENAME_MAX) {
+      newErrors.codename = `Codinome não pode ter mais de ${CODENAME_MAX} caracteres`
     }
 
-    if (formData.portrait.length > 2000) {
-      newErrors.portrait = 'URL da imagem não pode ter mais de 2000 caracteres'
+    if (formData.description.length > DESCRIPTION_MAX) {
+      newErrors.description = `Descrição não pode ter mais de ${DESCRIPTION_MAX} caracteres`
+    }
+
+    const portrait = formData.portrait.trim()
+    if (portrait.length > PORTRAIT_MAX) {
+      newErrors.portrait = `URL da imagem não pode ter mais de ${PORTRAIT_MAX} caracteres`
+    } else if (portrait && !/^(https?:\/\/|\/static\/)/.test(portrait)) {
+      newErrors.portrait = 'Use um link http(s) ou envie um arquivo'
     }
     
     setErrors(newErrors)
@@ -66,7 +74,7 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
         {
           codename: formData.codename || null,
           description: formData.description || null,
-          portrait: formData.portrait || null,
+          portrait: formData.portrait.trim() || null,
         }
       )
       
@@ -79,8 +87,7 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
       // Limpar mensagem após 3 segundos
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error) {
-      const errorMessage = error.response?.data?.detail || 'Erro ao atualizar personagem'
-      setErrors({ submit: errorMessage })
+      setErrors({ submit: errorMessage(error, 'Erro ao atualizar personagem') })
     } finally {
       setLoading(false)
     }
@@ -94,18 +101,14 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
     try {
       const form = new FormData()
       form.append('file', file)
-      const response = await api.post(`/api/my-characters/${character.id}/portrait`, form, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
+      const response = await api.post(`/api/my-characters/${character.id}/portrait`, form)
       const uploadedPortrait = response?.data?.portrait || ''
       setFormData((prev) => ({ ...prev, portrait: uploadedPortrait }))
+      onUpdate?.({ ...character, portrait: uploadedPortrait })
       setSuccessMessage('Portrait enviado com sucesso!')
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error) {
-      const errorMessage = error.response?.data?.detail || 'Erro ao fazer upload do portrait'
-      setErrors((prev) => ({ ...prev, submit: errorMessage }))
+      setErrors((prev) => ({ ...prev, submit: errorMessage(error, 'Erro ao enviar a imagem') }))
     } finally {
       setUploadingPortrait(false)
     }
@@ -128,10 +131,6 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
             <label className="text-xs uppercase tracking-[0.35em] text-slate-400">Classe (imutável)</label>
             <p className="text-lg font-bold text-orange-200">{character.class}</p>
           </div>
-          <div>
-            <label className="text-xs uppercase tracking-[0.35em] text-slate-400">Nível (imutável)</label>
-            <p className="text-lg font-bold text-white">{character.level}</p>
-          </div>
         </div>
 
         <div>
@@ -145,7 +144,7 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
             placeholder="URL da foto do personagem"
             value={formData.portrait}
             onChange={handleChange}
-            maxLength={2000}
+            maxLength={PORTRAIT_MAX}
             disabled={loading}
           />
           <div className="flex justify-between mt-1">
@@ -153,22 +152,22 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
               {errors.portrait}
             </span>
             <span className="text-xs text-secondary">
-              {formData.portrait.length}/2000
+              {formData.portrait.length}/{PORTRAIT_MAX}
             </span>
           </div>
           <div className="mt-3 flex items-center gap-3">
             <label className="inline-flex cursor-pointer items-center gap-2 border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.25em] text-slate-300 hover:border-cyan-400/50 hover:text-white">
               <input
                 type="file"
-                accept="image/*"
+                accept={ACCEPTED_IMAGES}
                 onChange={handlePortraitUpload}
                 disabled={loading || uploadingPortrait}
                 className="hidden"
               />
-              {uploadingPortrait ? 'Enviando...' : 'Upload de arquivo'}
+              {uploadingPortrait ? 'Enviando...' : 'Enviar imagem (PNG, JPG, WebP)'}
             </label>
             {formData.portrait && (
-              <a href={formData.portrait} target="_blank" rel="noreferrer" className="text-xs text-cyan-200 underline">
+              <a href={assetUrl(formData.portrait)} target="_blank" rel="noopener noreferrer" className="text-xs text-cyan-200 underline">
                 Ver imagem
               </a>
             )}
@@ -187,7 +186,7 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
             placeholder="Digite um codinome para seu personagem"
             value={formData.codename}
             onChange={handleChange}
-            maxLength={100}
+            maxLength={CODENAME_MAX}
             disabled={loading}
           />
           <div className="flex justify-between mt-1">
@@ -195,7 +194,7 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
               {errors.codename}
             </span>
             <span className="text-xs text-secondary">
-              {formData.codename.length}/100
+              {formData.codename.length}/{CODENAME_MAX}
             </span>
           </div>
         </div>
@@ -210,7 +209,7 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
             placeholder="Descreva seu personagem, sua história, etc..."
             value={formData.description}
             onChange={handleChange}
-            maxLength={500}
+            maxLength={DESCRIPTION_MAX}
             disabled={loading}
             rows={6}
             className="w-full resize-none rounded-lg border border-white/10 bg-[#0c1528] px-3 py-2 text-white placeholder-slate-500 transition-colors focus:border-cyan-400 focus:outline-none"
@@ -220,7 +219,7 @@ export default function PlayerCharacterEditor({ character, onUpdate }) {
               {errors.description}
             </span>
             <span className="text-xs text-secondary">
-              {formData.description.length}/500
+              {formData.description.length}/{DESCRIPTION_MAX}
             </span>
           </div>
         </div>

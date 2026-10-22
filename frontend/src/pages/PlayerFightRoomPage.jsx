@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { useUserNotificationsWebSocket } from '../hooks/useUserNotificationsWebSocket'
-import api from '../services/api'
+import { useNotificationEvent } from '../context/NotificationsContext'
+import api, { errorMessage } from '../services/api'
 import { Button, Card } from '../components/common'
 
 function getFightStateLabel(status) {
@@ -11,143 +11,104 @@ function getFightStateLabel(status) {
   return 'Sessão ativa'
 }
 
+const EMPTY_RESPONSES = { accepted: [], declined: [], pending: [] }
+
+function applyInviteResponse(prev, userId, accept) {
+  const without = (list) => (list || []).filter((entry) => entry !== userId)
+  return {
+    accepted: accept ? [...without(prev.accepted), userId] : without(prev.accepted),
+    declined: accept ? without(prev.declined) : [...without(prev.declined), userId],
+    pending: without(prev.pending),
+  }
+}
+
 export default function PlayerFightRoomPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const params = useParams()
   const { user, logout } = useAuth()
-  const { notifications } = useUserNotificationsWebSocket(user?.id)
   const fightId = Number(params.fightId)
   const fightName = location.state?.fightName || `#${fightId}`
 
   const [fightStatus, setFightStatus] = useState(location.state?.started ? 'started' : 'waiting')
   const [fightData, setFightData] = useState(null)
-  const [inviteResponses, setInviteResponses] = useState({ accepted: [], declined: [], pending: [] })
+  const [inviteResponses, setInviteResponses] = useState(EMPTY_RESPONSES)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [lastEvent, setLastEvent] = useState(null)
   const [currentTurnUserId, setCurrentTurnUserId] = useState(null)
   const [isMyTurn, setIsMyTurn] = useState(false)
+  const [sentReady, setSentReady] = useState(false)
 
-  const loadFightData = async () => {
+  const loadFightData = useCallback(async () => {
     if (!fightId) return
     try {
       setLoading(true)
-      const [fightResponse, responsesResponse] = await Promise.all([
+      const [fightResponse, responsesResponse, turnResponse] = await Promise.all([
         api.get(`/api/fights/${fightId}`),
         api.get(`/api/fights/${fightId}/responses`),
+        api.get(`/api/fights/${fightId}/turn/me`),
       ])
-
       setFightData(fightResponse.data || null)
-      setInviteResponses(responsesResponse.data || { accepted: [], declined: [], pending: [] })
-
-      if ((fightResponse.data?.status || '').toLowerCase() === 'in_progress') {
-        setFightStatus('started')
-      }
-
+      setInviteResponses(responsesResponse.data || EMPTY_RESPONSES)
+      setCurrentTurnUserId(turnResponse.data?.current_user_id || null)
+      setIsMyTurn(Boolean(turnResponse.data?.is_my_turn))
+      if ((fightResponse.data?.status || '').toLowerCase() === 'in_progress') setFightStatus('started')
       setError(null)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Não foi possível carregar os dados da luta.')
+      setError(errorMessage(err, 'Não foi possível carregar os dados da luta.'))
     } finally {
       setLoading(false)
     }
-  }
-
-  const loadTurnInfo = async () => {
-    try {
-      const res = await api.get(`/api/fights/${fightId}/turn/me`)
-      setCurrentTurnUserId(res.data?.current_user_id || null)
-      setIsMyTurn(Boolean(res.data?.is_my_turn))
-    } catch (err) {
-      // ignore
-    }
-  }
-
-  const lastRelevantNotification = useMemo(() => {
-    if (!notifications || notifications.length === 0) return null
-    return [...notifications].reverse().find((notification) => {
-      const notificationFightId = Number(notification?.data?.fight_id)
-      return notificationFightId === fightId && ['fight_started', 'fight_invite_response', 'fight_invite_results'].includes(notification?.type)
-    }) || null
-  }, [notifications, fightId])
-
-  useEffect(() => {
-    if (!lastRelevantNotification) return
-    if (lastRelevantNotification.type === 'fight_started') {
-      setFightStatus('started')
-    }
-
-    if (lastRelevantNotification.type === 'fight_invite_response') {
-      const { user_id, accept } = lastRelevantNotification.data || {}
-      setInviteResponses((prev) => {
-        const next = {
-          accepted: [...(prev.accepted || [])],
-          declined: [...(prev.declined || [])],
-          pending: [...(prev.pending || [])],
-        }
-
-        if (accept) {
-          if (!next.accepted.includes(user_id)) next.accepted.push(user_id)
-          next.declined = next.declined.filter((entry) => entry !== user_id)
-          next.pending = next.pending.filter((entry) => entry !== user_id)
-        } else {
-          if (!next.declined.includes(user_id)) next.declined.push(user_id)
-          next.accepted = next.accepted.filter((entry) => entry !== user_id)
-          next.pending = next.pending.filter((entry) => entry !== user_id)
-        }
-
-        return next
-      })
-    }
-
-    if (lastRelevantNotification.type === 'fight_invite_results') {
-      setInviteResponses({
-        accepted: lastRelevantNotification.data?.accepted || [],
-        declined: lastRelevantNotification.data?.declined || [],
-        pending: lastRelevantNotification.data?.pending || [],
-      })
-    }
-
-    setLastEvent(lastRelevantNotification)
-  }, [lastRelevantNotification])
-
-  useEffect(() => {
-    if (fightStatus === 'started') {
-      // small delay to let UI show started state, then navigate to battle screen
-      const t = setTimeout(() => {
-        navigate(`/player/fight/${fightId}/battle`, { replace: true, state: { fightId, fightName } })
-      }, 700)
-      return () => clearTimeout(t)
-    }
-  }, [fightStatus, fightId, navigate, fightName])
-
-  useEffect(() => {
-    loadFightData()
-    loadTurnInfo()
   }, [fightId])
 
   useEffect(() => {
-    if (!notifications || notifications.length === 0) return
-    const latest = notifications[notifications.length - 1]
-    if (latest?.type === 'turn_changed' && Number(latest?.data?.fight_id) === fightId) {
-      setCurrentTurnUserId(latest.data?.current_user_id || null)
-      setIsMyTurn(Boolean(latest.data?.current_user_id === user?.id))
+    loadFightData()
+  }, [loadFightData])
+
+  const isThisFight = (notification) => Number(notification?.data?.fight_id) === fightId
+
+  useNotificationEvent(['fight_started', 'fight_invite_response', 'fight_invite_results'], (notification) => {
+    if (!isThisFight(notification)) return
+    setLastEvent(notification)
+    if (notification.type === 'fight_started') setFightStatus('started')
+    if (notification.type === 'fight_invite_response') {
+      const { user_id: userId, accept } = notification.data || {}
+      setInviteResponses((prev) => applyInviteResponse(prev, userId, accept))
     }
-  }, [notifications, fightId, user])
+    if (notification.type === 'fight_invite_results') {
+      setInviteResponses({
+        accepted: notification.data?.accepted || [],
+        declined: notification.data?.declined || [],
+        pending: [],
+      })
+    }
+  })
 
-  const handleReturnToSession = () => {
-    navigate('/player', { replace: true })
-  }
+  useNotificationEvent('turn_changed', (notification) => {
+    if (!isThisFight(notification)) return
+    setCurrentTurnUserId(notification.data?.current_user_id || null)
+    setIsMyTurn(notification.data?.current_user_id === user?.id)
+  })
 
-  const [sentReady, setSentReady] = useState(false)
+  useEffect(() => {
+    if (fightStatus !== 'started') return undefined
+    // Pequena pausa para o jogador ver que a luta começou antes de abrir a tela de combate.
+    const timer = setTimeout(() => {
+      navigate(`/player/fight/${fightId}/battle`, { replace: true, state: { fightId, fightName } })
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [fightStatus, fightId, navigate, fightName])
+
+  const handleReturnToSession = () => navigate('/player', { replace: true })
 
   const sendReady = async () => {
     if (!fightId) return
     try {
-      await api.post(`/api/fights/${fightId}/entries/player`, { action: 'ready', actor_type: 'player', actor_name: user?.login })
+      await api.post(`/api/fights/${fightId}/entries/player`, { action: 'ready' })
       setSentReady(true)
     } catch (err) {
-      console.error('Falha ao enviar ready', err)
+      setError(errorMessage(err, 'Não foi possível avisar que você está pronto.'))
     }
   }
 

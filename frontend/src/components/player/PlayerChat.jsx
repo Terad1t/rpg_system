@@ -1,25 +1,24 @@
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Card, Button } from '../common'
-import websocket from '../../services/websocket'
 import { useAuth } from '../../context/AuthContext'
+import { useSocket } from '../../hooks/useSocket'
+
+const MAX_MESSAGES = 200
+const SYSTEM_TYPES = new Set(['system', 'error', 'user_joined', 'user_left'])
 
 function formatTimestamp(createdAt) {
-  if (!createdAt) {
-    return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-  }
-
-  const date = new Date(createdAt)
-  if (Number.isNaN(date.getTime())) {
-    return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-  }
-
-  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const date = createdAt ? new Date(createdAt) : new Date()
+  const valid = Number.isNaN(date.getTime()) ? new Date() : date
+  return valid.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
-function normalizeMessage(data, userId, identityLabel = '') {
+let localMessageId = 0
+
+function normalizeMessage(data, userId) {
+  localMessageId += 1
   return {
-    id: data.id ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    author: data.character_codename || data.username || identityLabel || 'Sistema',
+    id: data.id ? `msg-${data.id}` : `local-${localMessageId}`,
+    author: data.username || 'Sistema',
     message: data.message || '',
     timestamp: formatTimestamp(data.created_at),
     isOwn: data.user_id === userId,
@@ -39,7 +38,6 @@ export default function PlayerChat({
   const { user } = useAuth()
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
-  const [isConnected, setIsConnected] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const messagesEndRef = useRef(null)
 
@@ -47,52 +45,32 @@ export default function PlayerChat({
     setIsCollapsed(defaultCollapsed)
   }, [defaultCollapsed])
 
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (user && user.role === 'player' && token) {
-      setMessages([])
-      const path = characterId ? `/api/chat/ws?character_id=${characterId}` : '/api/chat/ws'
-      websocket.connect(token, path)
-        .then(() => {
-          setIsConnected(true)
-        })
-        .catch((error) => {
-          console.error('[PlayerChat] Erro ao conectar ao WebSocket:', error)
-          setIsConnected(false)
-        })
-
-      const unsubscribe = websocket.on('message', (data) => {
-        setMessages((prev) => [...prev, normalizeMessage(data, user?.id, identityLabel)])
+  const handleIncoming = useCallback(
+    (data) => {
+      setMessages((prev) => {
+        const next = normalizeMessage(data, user?.id)
+        // O histórico reenviado ao reconectar não deve duplicar mensagens já exibidas.
+        if (data.id && prev.some((msg) => msg.id === next.id)) return prev
+        return [...prev, next].slice(-MAX_MESSAGES)
       })
+    },
+    [user?.id],
+  )
 
-      return () => {
-        unsubscribe()
-        websocket.disconnect()
-      }
-    } else {
-      setIsConnected(false)
-      if (!user) {
-        console.warn('[PlayerChat] Usuário não definido, não conectando ao websocket')
-      } else if (user.role !== 'player') {
-        console.warn('[PlayerChat] Usuário não é player, não conectando ao websocket')
-      } else if (!token) {
-        console.warn('[PlayerChat] Token não encontrado no localStorage, não conectando ao websocket')
-      }
-    }
-  }, [characterId, identityLabel, user?.id, user?.role])
+  const path = user?.role === 'player' ? `/api/chat/ws${characterId ? `?character_id=${characterId}` : ''}` : null
+  const { isConnected, send } = useSocket(path, handleIncoming)
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setMessages([])
+  }, [path])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' })
   }, [messages])
 
   const handleSendMessage = () => {
-    if (newMessage.trim() && isConnected) {
-      websocket.send({
-        message: newMessage,
-        character_id: characterId,
-      })
-      setNewMessage('')
-    }
+    const text = newMessage.trim()
+    if (text && send({ message: text })) setNewMessage('')
   }
 
   const handleKeyPress = (e) => {
@@ -161,13 +139,13 @@ export default function PlayerChat({
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-slate-400">Chat pronto</p>
                 <p className="mt-2 text-sm text-slate-300">
-                  Mensagens reais aparecerão aqui assim que o websocket entregar o histórico.
+                  {isConnected ? 'Nenhuma mensagem ainda. Diga olá para a mesa!' : 'Conectando ao chat...'}
                 </p>
               </div>
             </div>
           ) : (
             messages.map((msg) => {
-              const isSystem = msg.messageType === 'system' || msg.messageType === 'error'
+              const isSystem = SYSTEM_TYPES.has(msg.messageType)
               const isHistory = msg.messageType === 'history'
 
               return (
@@ -210,6 +188,8 @@ export default function PlayerChat({
 
         <div className="mt-4 flex gap-3 border-t border-white/10 pt-4">
           <textarea
+            aria-label="Mensagem"
+            maxLength={1000}
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyPress}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import api from '../services/api'
+import api, { errorMessage } from '../services/api'
 import { Button, Card } from '../components/common'
 
 const EMPTY_FORM = {
@@ -79,8 +79,7 @@ export default function MasterCharacterManager() {
       setClasses(classesRes.data || [])
       setError(null)
     } catch (err) {
-      console.error('Erro ao carregar painel do mestre:', err)
-      setError(err.response?.data?.detail || err.message || 'Erro ao carregar dados do mestre')
+      setError(errorMessage(err, 'Erro ao carregar dados do mestre'))
     } finally {
       setLoading(false)
     }
@@ -182,7 +181,7 @@ export default function MasterCharacterManager() {
       setMessage({ type: 'success', text: 'Personagem atualizado com sucesso.' })
       await loadData()
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao salvar personagem' })
+      setMessage({ type: 'error', text: errorMessage(err, 'Erro ao salvar personagem') })
     } finally {
       setSaving(false)
     }
@@ -196,7 +195,7 @@ export default function MasterCharacterManager() {
       setMessage({ type: 'success', text: 'Visibilidade atualizada.' })
       await loadData()
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao salvar visibilidade' })
+      setMessage({ type: 'error', text: errorMessage(err, 'Erro ao salvar visibilidade') })
     } finally {
       setSaving(false)
     }
@@ -211,7 +210,7 @@ export default function MasterCharacterManager() {
       })
       setMessage({ type: 'success', text: 'Atualização narrativa enviada.' })
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao enviar atualização narrativa' })
+      setMessage({ type: 'error', text: errorMessage(err, 'Erro ao enviar atualização narrativa') })
     } finally {
       setSaving(false)
     }
@@ -239,7 +238,7 @@ export default function MasterCharacterManager() {
       setQuickAction({ buffs: '', debuffs: '', addBuff: '', addDebuff: '', buffDuration: '', debuffDuration: '', removeBuff: '', removeDebuff: '', note: '' })
       await loadData()
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao aplicar ação' })
+      setMessage({ type: 'error', text: errorMessage(err, 'Erro ao aplicar ação') })
     } finally {
       setSaving(false)
     }
@@ -259,7 +258,7 @@ export default function MasterCharacterManager() {
       setBuffDurationForApply('')
       await loadData()
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao aplicar buff' })
+      setMessage({ type: 'error', text: errorMessage(err, 'Erro ao aplicar buff') })
     } finally {
       setSaving(false)
     }
@@ -273,7 +272,7 @@ export default function MasterCharacterManager() {
       setMessage({ type: 'success', text: `Efeito ${effectName} removido.` })
       await loadData()
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao remover efeito' })
+      setMessage({ type: 'error', text: errorMessage(err, 'Erro ao remover efeito') })
     } finally {
       setSaving(false)
     }
@@ -297,7 +296,7 @@ export default function MasterCharacterManager() {
       setForm(EMPTY_FORM)
       await loadData()
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao criar personagem' })
+      setMessage({ type: 'error', text: errorMessage(err, 'Erro ao criar personagem') })
     } finally {
       setSaving(false)
     }
@@ -314,7 +313,7 @@ export default function MasterCharacterManager() {
       setSelectedId(null)
       await loadData()
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao deletar personagem' })
+      setMessage({ type: 'error', text: errorMessage(err, 'Erro ao deletar personagem') })
     } finally {
       setSaving(false)
     }
@@ -566,7 +565,7 @@ export default function MasterCharacterManager() {
                                 </div>
                               </div>
                             ))
-                          } catch (e) {
+                          } catch {
                             return <div className="text-sm text-slate-400">Formato inválido</div>
                           }
                         })()

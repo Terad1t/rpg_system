@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ..models.character_habilidade_model import CharacterHabilidade
 from ..models.character_model import Character
@@ -35,6 +35,14 @@ def assign_skill_to_character(db: Session, character_id: int, habilidade_id: int
         if not inv:
             return None
 
+    already = (
+        db.query(CharacterHabilidade)
+        .filter(CharacterHabilidade.character_id == character_id, CharacterHabilidade.habilidade_id == habilidade_id)
+        .first()
+    )
+    if already:
+        return already
+
     # Create assignment
     assigned = CharacterHabilidade(character_id=character_id, habilidade_id=habilidade_id, assigned_by=assigned_by)
     db.add(assigned)
@@ -60,4 +68,9 @@ def unassign_skill(db: Session, character_id: int, habilidade_id: int):
 
 
 def get_assigned_skills(db: Session, character_id: int):
-    return db.query(CharacterHabilidade).filter(CharacterHabilidade.character_id == character_id).all()
+    return (
+        db.query(CharacterHabilidade)
+        .options(joinedload(CharacterHabilidade.habilidade))
+        .filter(CharacterHabilidade.character_id == character_id)
+        .all()
+    )

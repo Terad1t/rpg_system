@@ -5,7 +5,8 @@ export default function Button({
   disabled = false,
   onClick,
   className = '',
-  ...props 
+  type = 'button',
+  ...props
 }) {
   const baseStyles = 'font-semibold rounded-lg transition-all duration-200 cursor-pointer border-0 focus:outline-none focus:ring-2 focus:ring-offset-2'
   
@@ -26,6 +27,7 @@ export default function Button({
   
   return (
     <button
+      type={type}
       className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${disabledStyles} ${className}`}
       disabled={disabled}
       onClick={onClick}

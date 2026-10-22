@@ -1,12 +1,10 @@
 import { useState } from 'react'
 
 import {
-  IconBackpack,
   IconBolt,
   IconChart,
   IconChat,
   IconGem,
-  IconMap,
   IconMenu,
   IconSword,
   IconTag,
@@ -14,17 +12,9 @@ import {
   IconUsers,
 } from './Icons'
 
-const PLAYER_TABS = [
-  { id: 'overview', label: 'Painel', icon: <IconChart /> },
-  { id: 'races', label: 'Raças', icon: <IconTag /> },
-  { id: 'items', label: 'Itens', icon: <IconGem /> },
-  { id: 'characters', label: 'Personagens', icon: <IconUsers /> },
-  { id: 'map', label: 'Mapa', icon: <IconMap /> },
-]
-
 const MASTER_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: <IconChart /> },
-  { id: 'players', label: 'Jogadores', icon: <IconUsers /> },
+  { id: 'players', label: 'Contas', icon: <IconUsers /> },
   { id: 'characters', label: 'Personagens', icon: <IconUser /> },
   { id: 'requests', label: 'Requisições', icon: <IconChat /> },
   { id: 'items', label: 'Itens', icon: <IconGem /> },
@@ -32,20 +22,21 @@ const MASTER_TABS = [
   { id: 'races', label: 'Raças', icon: <IconTag /> },
   { id: 'classes', label: 'Classes', icon: <IconBolt /> },
   { id: 'skills', label: 'Habilidades', icon: <IconSword /> },
-  { id: 'map', label: 'Mapa', icon: <IconMap /> },
   { id: 'buffs', label: 'Buffs/Debuffs', icon: <IconBolt /> },
 ]
 
-export default function Sidebar({ activeTab, onTabChange, isMaster = false, badges = {} }) {
+export default function Sidebar({ activeTab, onTabChange, badges = {} }) {
   const [isOpen, setIsOpen] = useState(false)
-  const tabs = isMaster ? MASTER_TABS : PLAYER_TABS
+  const tabs = MASTER_TABS
 
   return (
     <>
       {/* Hamburger Button (mobile) */}
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="absolute top-5 left-5 z-30 rounded-full border border-cyan-400/30 bg-[#050b18]/80 p-3 text-cyan-200 shadow-lg backdrop-blur lg:hidden"
+        aria-expanded={isOpen}
+        className="fixed top-5 left-5 z-30 rounded-full border border-cyan-400/30 bg-[#050b18]/80 p-3 text-cyan-200 shadow-lg backdrop-blur lg:hidden"
         aria-label={isOpen ? 'Fechar menu' : 'Abrir menu'}
       >
         <IconMenu className="w-6 h-6" />
@@ -64,7 +55,7 @@ export default function Sidebar({ activeTab, onTabChange, isMaster = false, badg
       >
         <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(56,189,248,0.12),transparent_42%,rgba(255,122,24,0.12))]" />
         <div className="relative p-6 border-b border-white/10">
-          <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-200/75">Player File</p>
+          <p className="text-[11px] uppercase tracking-[0.45em] text-cyan-200/75">Painel do Mestre</p>
           <h2 className="mt-3 text-3xl font-black uppercase tracking-[0.25em] text-white">RPG</h2>
           <p className="mt-2 text-[11px] uppercase tracking-[0.35em] text-slate-400">
             Tactical interface
@@ -75,7 +66,9 @@ export default function Sidebar({ activeTab, onTabChange, isMaster = false, badg
         <nav className="relative max-h-[calc(100vh-13rem)] overflow-y-auto p-4 space-y-3 pb-20">
           {tabs.map((tab) => (
             <button
+              type="button"
               key={tab.id}
+              aria-current={activeTab === tab.id ? 'page' : undefined}
               onClick={() => {
                 onTabChange(tab.id)
                 setIsOpen(false) // Fecha sidebar em mobile ao clicar
@@ -111,7 +104,7 @@ export default function Sidebar({ activeTab, onTabChange, isMaster = false, badg
         {/* Footer */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-[#050b18]/80 backdrop-blur">
           <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400 text-center">
-            v1.0.0 // player ops
+            v1.1.0
           </p>
         </div>
       </aside>

@@ -7,7 +7,6 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const { login, error: authError } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     login: '',
     password: '',
@@ -21,22 +20,13 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
-    console.log('[LoginPage] Form submitted')
     setIsLoading(true)
-
     try {
-      console.log('[LoginPage] Calling login() with:', { login: formData.login })
-      const user = await login(formData.login, formData.password, formData.pin)
-      console.log('[LoginPage] login() returned, user:', user)
-      const targetRoute = user.role === 'master' ? '/master' : '/player/select'
-      console.log('[LoginPage] Navigating to:', targetRoute)
-      navigate(targetRoute)
-    } catch (err) {
-      console.error('[LoginPage] Catch block, error:', err.message)
-      setError(authError || 'Erro ao fazer login. Verifique suas credenciais.')
+      const user = await login(formData.login.trim(), formData.password, formData.pin)
+      navigate(user.role === 'master' ? '/master' : '/player/select', { replace: true })
+    } catch {
+      // A mensagem fica em `authError`, preenchida pelo AuthContext.
     } finally {
-      console.log('[LoginPage] Finally block - setting isLoading to false')
       setIsLoading(false)
     }
   }
@@ -87,10 +77,12 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.3em] text-slate-400">Usuário</label>
+              <label htmlFor="login-login" className="mb-2 block text-xs uppercase tracking-[0.3em] text-slate-400">Usuário</label>
               <input
                 type="text"
+                id="login-login"
                 name="login"
+                autoComplete="username"
                 value={formData.login}
                 onChange={handleChange}
                 placeholder="seu_usuario"
@@ -101,10 +93,12 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.3em] text-slate-400">Senha</label>
+              <label htmlFor="login-password" className="mb-2 block text-xs uppercase tracking-[0.3em] text-slate-400">Senha</label>
               <input
                 type="password"
+                id="login-password"
                 name="password"
+                autoComplete="current-password"
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Sua senha"
@@ -115,10 +109,14 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.3em] text-slate-400">PIN</label>
+              <label htmlFor="login-pin" className="mb-2 block text-xs uppercase tracking-[0.3em] text-slate-400">PIN</label>
               <input
                 type="password"
+                id="login-pin"
                 name="pin"
+                inputMode="numeric"
+                pattern="[0-9]{4,6}"
+                autoComplete="off"
                 value={formData.pin}
                 onChange={handleChange}
                 placeholder="Seu PIN (4-6 dígitos)"
@@ -128,9 +126,9 @@ export default function LoginPage() {
               />
             </div>
 
-            {(error || authError) && (
+            {authError && (
               <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-200">
-                <p className="text-sm">{error || authError}</p>
+                <p className="text-sm" role="alert">{authError}</p>
               </div>
             )}
 

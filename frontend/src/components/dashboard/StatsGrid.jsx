@@ -14,24 +14,14 @@ function StatItem({ label, value, icon }) {
   )
 }
 
-export default function StatsGrid({ stats }) {
-  const s = stats || {}
-
-  const data = {
-    players: s.players ?? 128,
-    characters: s.characters ?? 342,
-    fights: s.fight_count ?? s.fights ?? 12,
-    items: s.items ?? 475,
-    damage: s.total_player_damage ?? 0,
-  }
-
+export default function StatsGrid({ overview = {}, stats = {} }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-      <StatItem label="Jogadores" value={data.players} icon={<IconUsers className="w-9 h-9" />} />
-      <StatItem label="Personagens" value={data.characters} icon={<IconUser className="w-9 h-9" />} />
-      <StatItem label="Fights" value={data.fights} icon={<IconBolt className="w-9 h-9" />} />
-      <StatItem label="Itens" value={data.items} icon={<IconGem className="w-9 h-9" />} />
-      <StatItem label="Dano jogador" value={data.damage} icon={<IconSword className="w-9 h-9" />} />
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <StatItem label="Jogadores ativos" value={overview.players ?? 0} icon={<IconUsers className="h-9 w-9" />} />
+      <StatItem label="Personagens" value={overview.characters ?? 0} icon={<IconUser className="h-9 w-9" />} />
+      <StatItem label="Lutas" value={overview.fights ?? stats.fight_count ?? 0} icon={<IconBolt className="h-9 w-9" />} />
+      <StatItem label="Itens" value={overview.items ?? 0} icon={<IconGem className="h-9 w-9" />} />
+      <StatItem label="Dano dos jogadores" value={stats.total_player_damage ?? 0} icon={<IconSword className="h-9 w-9" />} />
     </div>
   )
 }

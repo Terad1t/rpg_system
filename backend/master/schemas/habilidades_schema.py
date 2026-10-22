@@ -63,6 +63,20 @@ class HabilidadeRead(HabilidadeBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class HabilidadeSummary(BaseModel):
+    """Dados da habilidade exibidos junto de uma atribuição (sem revalidar regras de tipo)."""
+
+    id: int
+    name: str
+    tipo: str
+    custo_vigor: int | None = 0
+    custo_vida: int | None = 0
+    dano_base: int | None = 0
+    efeitos_atributos: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class HabilidadeUpdate(BaseModel):
     name: str | None = None
     tipo: str | None = None

@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { useUserNotificationsWebSocket } from '../hooks/useUserNotificationsWebSocket'
+import { useNotificationEvent } from '../context/NotificationsContext'
 import { Button, Card } from '../components/common'
-import api from '../services/api'
+import api, { errorMessage } from '../services/api'
+
+function appendEntry(entries, entry) {
+  if (!entry || (entry.id && entries.some((existing) => existing.id === entry.id))) return entries
+  return [...entries, entry]
+}
 
 export default function PlayerBattlePage() {
   const { user, logout } = useAuth()
-  const { notifications } = useUserNotificationsWebSocket(user?.id)
   const params = useParams()
   const navigate = useNavigate()
   const location = useLocation()
@@ -18,14 +22,13 @@ export default function PlayerBattlePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isMyTurn, setIsMyTurn] = useState(false)
+  const [sending, setSending] = useState(false)
   const [selectedAction, setSelectedAction] = useState('attack')
   const [actionValue, setActionValue] = useState(1)
+  // Todas as entradas carregadas aqui são desta luta (o filtro antigo descartava as que chegavam ao vivo).
+  const relevantEntries = entries
 
-  const relevantEntries = useMemo(() => {
-    return entries.filter((entry) => Number(entry.fight_id) === fightId)
-  }, [entries, fightId])
-
-  const loadBattle = async () => {
+  const loadBattle = useCallback(async () => {
     try {
       setLoading(true)
       const [fightResponse, turnResponse] = await Promise.all([
@@ -36,49 +39,40 @@ export default function PlayerBattlePage() {
       setIsMyTurn(Boolean(turnResponse.data?.is_my_turn))
       setError(null)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Falha ao carregar entradas de combate')
+      setError(errorMessage(err, 'Falha ao carregar o combate.'))
     } finally {
       setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    loadBattle()
   }, [fightId])
 
   useEffect(() => {
-    if (!notifications || notifications.length === 0) return
+    loadBattle()
+  }, [loadBattle])
 
-    const latest = notifications[notifications.length - 1]
-    if (latest?.type === 'fight_event' && Number(latest?.data?.fight_id) === fightId) {
-      const nextEntry = latest.data?.entry
-      if (nextEntry) {
-        setEntries((prev) => [...prev, nextEntry])
-      }
-    }
+  useNotificationEvent('fight_event', (notification) => {
+    if (Number(notification.data?.fight_id) !== fightId) return
+    setEntries((prev) => appendEntry(prev, notification.data?.entry))
+  })
 
-    if (latest?.type === 'turn_changed' && Number(latest?.data?.fight_id) === fightId) {
-      setIsMyTurn(Boolean(latest.data?.current_user_id === user?.id))
-    }
-  }, [notifications, fightId, user])
+  useNotificationEvent('turn_changed', (notification) => {
+    if (Number(notification.data?.fight_id) !== fightId) return
+    setIsMyTurn(notification.data?.current_user_id === user?.id)
+  })
 
   const handleBack = () => navigate('/player', { replace: true })
 
   const sendTestAttack = async () => {
+    setSending(true)
     try {
-      const payload = {
-        actor_type: 'player',
-        actor_name: user?.login,
+      await api.post(`/api/fights/${fightId}/entries/player`, {
         action: selectedAction,
-        value: Number(actionValue),
-      }
-
-      if (selectedAction === 'attack') payload.damage = Number(actionValue)
-      if (selectedAction === 'heal') payload.healing = Number(actionValue)
-
-      await api.post(`/api/fights/${fightId}/entries/player`, payload)
+        value: Math.max(0, Number(actionValue) || 0),
+      })
+      setError(null)
     } catch (err) {
-      console.error('Falha ao enviar ação de combate', err)
+      setError(errorMessage(err, 'Não foi possível enviar a ação.'))
+    } finally {
+      setSending(false)
     }
   }
 
@@ -104,6 +98,7 @@ export default function PlayerBattlePage() {
           <div className="mt-4">
             <div className="flex flex-wrap items-center gap-3">
               <select
+                aria-label="Ação"
                 className="rounded px-3 py-2 bg-[#0c1528]"
                 value={selectedAction}
                 onChange={(e) => setSelectedAction(e.target.value)}
@@ -115,23 +110,31 @@ export default function PlayerBattlePage() {
                 <option value="skill">Habilidade</option>
               </select>
               <input
+                aria-label="Valor"
                 type="number"
                 min="0"
+                max="100000"
                 className="w-24 rounded px-3 py-2 bg-[#0c1528]"
                 value={actionValue}
                 onChange={(e) => setActionValue(e.target.value)}
                 disabled={!isMyTurn}
               />
-              <Button size="sm" onClick={sendTestAttack} disabled={!isMyTurn}>Enviar</Button>
+              <Button size="sm" onClick={sendTestAttack} disabled={!isMyTurn || sending}>
+                {sending ? 'Enviando...' : 'Enviar'}
+              </Button>
             </div>
             {!isMyTurn && <p className="mt-2 text-sm text-slate-400">Você só pode agir quando a vez estiver com seu personagem.</p>}
           </div>
 
+          {error && (
+            <p className="mt-4 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
+              {error}
+            </p>
+          )}
+
           <div className="mt-6">
             {loading ? (
               <p className="text-sm text-slate-300">Carregando...</p>
-            ) : error ? (
-              <p className="text-sm text-red-300">{error}</p>
             ) : (
               <div className="space-y-3">
                 {relevantEntries.length === 0 && <p className="text-sm text-slate-300">Nenhuma ação registrada ainda.</p>}
@@ -144,7 +147,6 @@ export default function PlayerBattlePage() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-bold text-cyan-200">Valor: {entry.value ?? 0}</p>
-                        <p className="text-xs text-slate-400">ID: {entry.id || '—'}</p>
                       </div>
                     </div>
                   </div>

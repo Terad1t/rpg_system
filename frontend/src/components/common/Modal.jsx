@@ -1,52 +1,59 @@
+import { useEffect, useId } from 'react'
 import Button from './Button'
 import { IconX } from './Icons'
 
-export default function Modal({ 
-  isOpen, 
-  onClose, 
-  title, 
-  children,
-  actions = [],
-  size = 'md'
-}) {
+const SIZES = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+}
+
+export default function Modal({ isOpen, onClose, title, children, actions = [], size = 'md' }) {
+  const titleId = useId()
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') onClose?.()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
-  const sizes = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-    xl: 'max-w-xl',
-  }
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className={`bg-dark-secondary border border-dark-border rounded-lg shadow-2xl ${sizes[size]}`}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-dark-border">
-          <h2 className="text-xl font-bold text-orange-500">{title}</h2>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      onMouseDown={(event) => event.target === event.currentTarget && onClose?.()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className={`w-full rounded-lg border border-dark-border bg-dark-secondary shadow-2xl ${SIZES[size] || SIZES.md}`}
+      >
+        <div className="flex items-center justify-between border-b border-dark-border p-6">
+          <h2 id={titleId} className="text-xl font-bold text-orange-500">
+            {title}
+          </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="text-secondary hover:text-primary-orange transition-colors"
+            className="text-secondary transition-colors hover:text-primary-orange"
             aria-label="Fechar"
           >
-            <IconX className="w-5 h-5" />
+            <IconX className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 max-h-96 overflow-y-auto">
-          {children}
-        </div>
+        <div className="max-h-96 overflow-y-auto p-6">{children}</div>
 
-        {/* Footer */}
         {actions.length > 0 && (
-          <div className="flex gap-3 justify-end p-6 border-t border-dark-border">
-            {actions.map((action, index) => (
-              <Button
-                key={index}
-                variant={action.variant || 'primary'}
-                onClick={action.onClick}
-              >
+          <div className="flex justify-end gap-3 border-t border-dark-border p-6">
+            {actions.map((action) => (
+              <Button key={action.label} variant={action.variant || 'primary'} onClick={action.onClick} disabled={action.disabled}>
                 {action.label}
               </Button>
             ))}

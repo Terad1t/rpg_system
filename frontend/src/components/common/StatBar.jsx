@@ -33,12 +33,19 @@ export default function StatBar({
   return (
     <div style={{ width }}>
       <div className="flex justify-between items-center mb-1">
-        <label className="text-sm font-semibold text-white">{label}</label>
+        <span className="text-sm font-semibold text-white">{label}</span>
         <span className={`text-sm font-bold ${color.text}`}>
           {current} / {max}
         </span>
       </div>
-      <div className="w-full bg-dark-secondary rounded-full h-5 border border-dark-border overflow-hidden">
+      <div
+        className="w-full bg-dark-secondary rounded-full h-5 border border-dark-border overflow-hidden"
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={safeMax}
+        aria-valuenow={current}
+      >
         <div
           className={`${color.bar} h-full rounded-full transition-all duration-300 flex items-center justify-center`}
           style={{ width: `${percentage}%` }}

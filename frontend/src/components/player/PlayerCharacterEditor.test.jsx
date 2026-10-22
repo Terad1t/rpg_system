@@ -13,6 +13,12 @@ import * as apiModule from '../../services/api'
 vi.mock('../../services/api', () => ({
   default: {
     put: vi.fn(),
+    post: vi.fn(),
+  },
+  assetUrl: (path) => path,
+  errorMessage: (error, fallback) => {
+    const detail = error?.response?.data?.detail
+    return typeof detail === 'string' ? detail : fallback
   },
 }))
 
@@ -49,7 +55,6 @@ describe('PlayerCharacterEditor - Integração com API', () => {
       expect(screen.getByText('Aragorn')).toBeInTheDocument()
       expect(screen.getByText('Humano')).toBeInTheDocument()
       expect(screen.getByText('Guerreiro')).toBeInTheDocument()
-      expect(screen.getByText('15')).toBeInTheDocument()
     })
 
     it('deve preencher campos com dados atuais', () => {
@@ -65,8 +70,8 @@ describe('PlayerCharacterEditor - Integração com API', () => {
     it('deve exibir contador de caracteres', () => {
       render(<PlayerCharacterEditor character={mockCharacter} />)
       
-      expect(screen.getByText('10/100')).toBeInTheDocument() // "O Montador" = 10 chars
-      expect(screen.getByText('18/500')).toBeInTheDocument() // "Um guerreiro nobre" = 18 chars
+      expect(screen.getByText('10/50')).toBeInTheDocument() // "O Montador" = 10 chars
+      expect(screen.getByText('18/2000')).toBeInTheDocument() // "Um guerreiro nobre" = 18 chars
     })
 
     it('deve renderizar botões de ação', () => {
@@ -87,7 +92,7 @@ describe('PlayerCharacterEditor - Integração com API', () => {
       await user.type(codenameInput, 'Novo Codinome')
       
       expect(codenameInput.value).toBe('Novo Codinome')
-      expect(screen.getByText('13/100')).toBeInTheDocument()
+      expect(screen.getByText('13/50')).toBeInTheDocument()
     })
 
     it('deve atualizar o valor da descrição ao digitar', async () => {
@@ -99,7 +104,7 @@ describe('PlayerCharacterEditor - Integração com API', () => {
       await user.type(descriptionInput, 'Nova descrição')
       
       expect(descriptionInput.value).toBe('Nova descrição')
-      expect(screen.getByText('14/500')).toBeInTheDocument()
+      expect(screen.getByText('14/2000')).toBeInTheDocument()
     })
 
     it('deve respeitar limite de caracteres do codinome', async () => {
@@ -109,19 +114,16 @@ describe('PlayerCharacterEditor - Integração com API', () => {
       const codenameInput = screen.getByLabelText('Codinome')
       await user.clear(codenameInput)
       
-      // Tentar digitar 101 caracteres
-      const longText = 'a'.repeat(101)
-      await user.type(codenameInput, longText)
-      
-      // input maxLength deve limitar a 100
-      expect(codenameInput.value).toHaveLength(100)
+      // Tentar digitar 51 caracteres: o maxLength do input limita a 50
+      await user.type(codenameInput, 'a'.repeat(51))
+      expect(codenameInput.value).toHaveLength(50)
     })
 
     it('deve respeitar limite de caracteres da descrição', async () => {
       render(<PlayerCharacterEditor character={mockCharacter} />)
       
       const descriptionInput = screen.getByLabelText('Descrição')
-      expect(descriptionInput).toHaveAttribute('maxlength', '500')
+      expect(descriptionInput).toHaveAttribute('maxlength', '2000')
     })
 
     it('deve limpar formulário ao clicar em Cancelar', async () => {
@@ -147,31 +149,31 @@ describe('PlayerCharacterEditor - Integração com API', () => {
   })
 
   describe('Validação de Formulário', () => {
-    it('deve validar codinome com mais de 100 caracteres', async () => {
+    it('deve validar codinome com mais de 50 caracteres', async () => {
       render(<PlayerCharacterEditor character={mockCharacter} />)
       
       const codenameInput = screen.getByLabelText('Codinome')
-      fireEvent.change(codenameInput, { target: { value: 'a'.repeat(101) } })
+      fireEvent.change(codenameInput, { target: { value: 'a'.repeat(51) } })
       
       const submitButton = screen.getByRole('button', { name: 'Salvar Alterações' })
       fireEvent.click(submitButton)
       
       expect(
-        screen.getByText('Codinome não pode ter mais de 100 caracteres')
+        screen.getByText('Codinome não pode ter mais de 50 caracteres')
       ).toBeInTheDocument()
     })
 
-    it('deve validar descrição com mais de 500 caracteres', async () => {
+    it('deve validar descrição com mais de 2000 caracteres', async () => {
       render(<PlayerCharacterEditor character={mockCharacter} />)
       
       const descriptionInput = screen.getByLabelText('Descrição')
-      fireEvent.change(descriptionInput, { target: { value: 'a'.repeat(501) } })
+      fireEvent.change(descriptionInput, { target: { value: 'a'.repeat(2001) } })
       
       const submitButton = screen.getByRole('button', { name: 'Salvar Alterações' })
       fireEvent.click(submitButton)
       
       expect(
-        screen.getByText('Descrição não pode ter mais de 500 caracteres')
+        screen.getByText('Descrição não pode ter mais de 2000 caracteres')
       ).toBeInTheDocument()
     })
 
@@ -220,10 +222,11 @@ describe('PlayerCharacterEditor - Integração com API', () => {
       
       await waitFor(() => {
         expect(apiModule.default.put).toHaveBeenCalledWith(
-          '/my-characters/1',
+          '/api/my-characters/1',
           {
             codename: 'Elessar',
             description: 'Um guerreiro nobre',
+            portrait: null,
           }
         )
       })
@@ -247,10 +250,11 @@ describe('PlayerCharacterEditor - Integração com API', () => {
       
       await waitFor(() => {
         expect(apiModule.default.put).toHaveBeenCalledWith(
-          '/my-characters/1',
+          '/api/my-characters/1',
           {
             codename: null,
             description: 'Um guerreiro nobre',
+            portrait: null,
           }
         )
       })
@@ -465,7 +469,7 @@ describe('PlayerCharacterEditor - Integração com API', () => {
       
       await waitFor(() => {
         expect(apiModule.default.put).toHaveBeenCalledWith(
-          '/my-characters/1',
+          '/api/my-characters/1',
           expect.objectContaining({
             description: 'Descrição com caracteres especiais e símbolos @#$%'
           })

@@ -247,3 +247,11 @@ def test_inventory_includes_item_details(client, master, player, make_character,
     inventory = client.get(f"/api/characters/{character.id}/inventory/", headers=auth_header(player)).json()
     assert inventory[0]["item"]["name"] == "Poção"
     assert inventory[0]["quantidade"] == 2
+
+
+def test_master_overview_counts_real_records(client, master, player, other_player, make_character):
+    make_character(player)
+    overview = client.get("/api/master/overview/", headers=auth_header(master)).json()
+    assert overview["players"] == 2
+    assert overview["characters"] == 1
+    assert overview["items"] == 0

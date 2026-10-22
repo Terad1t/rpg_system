@@ -1,117 +1,72 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
+import api, { errorMessage } from "../services/api";
 
-export default function CharacterRequestForm() {
-  const { user } = useAuth();
+const EMPTY_FORM = {
+  codename: "",
+  name: "",
+  raca_id: "",
+  classe_id: "",
+  region_id: "",
+  age: "",
+  height: "",
+  description: "",
+};
+
+const optionalInt = (value) => (value === "" ? null : parseInt(value, 10));
+const optionalFloat = (value) => (value === "" ? null : parseFloat(value));
+
+export default function CharacterRequestForm({ onCreated }) {
   const [races, setRaces] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const [formData, setFormData] = useState({
-    codename: "",
-    name: "",
-    raca_id: "",
-    classe_id: "",
-    region_id: "",
-    age: "",
-    height: "",
-    description: "",
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
 
   useEffect(() => {
-    // Carrega raças e classes disponíveis
-    Promise.all([
-      fetch("/api/racas", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }).then((res) => {
-        if (!res.ok) throw new Error(`Erro ao buscar raças: ${res.status}`);
-        return res.json();
-      }),
-      fetch("/api/classes", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }).then((res) => {
-        if (!res.ok) throw new Error(`Erro ao buscar classes: ${res.status}`);
-        return res.json();
-      }),
-    ])
-      .then(([racasData, classesData]) => {
-        setRaces(racasData || []);
-        setClasses(classesData || []);
+    Promise.all([api.get("/api/racas/"), api.get("/api/classes/")])
+      .then(([racas, classesResponse]) => {
+        setRaces(racas.data || []);
+        setClasses(classesResponse.data || []);
         setError(null);
       })
-      .catch((err) => {
-        console.error("Erro ao carregar raças e classes:", err);
-        setError("Erro ao carregar raças e classes: " + err.message);
-      })
+      .catch((err) => setError(errorMessage(err, "Erro ao carregar raças e classes.")))
       .finally(() => setLoading(false));
   }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value || undefined,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
-    setSubmitting(true);
 
-    // Validação básica
-    if (!formData.name || !formData.raca_id || !formData.classe_id) {
+    if (!formData.name.trim() || !formData.raca_id || !formData.classe_id) {
       setError("Nome, raça e classe são obrigatórios");
-      setSubmitting(false);
       return;
     }
 
+    setSubmitting(true);
     try {
-      const response = await fetch("/api/characters/requests/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          ...formData,
-          raca_id: parseInt(formData.raca_id),
-          classe_id: parseInt(formData.classe_id),
-          region_id: formData.region_id ? parseInt(formData.region_id) : null,
-          age: formData.age ? parseInt(formData.age) : null,
-          height: formData.height ? parseFloat(formData.height) : null,
-        }),
+      await api.post("/api/characters/requests/", {
+        name: formData.name.trim(),
+        codename: formData.codename.trim() || null,
+        description: formData.description.trim() || null,
+        raca_id: parseInt(formData.raca_id, 10),
+        classe_id: parseInt(formData.classe_id, 10),
+        region_id: optionalInt(formData.region_id),
+        age: optionalInt(formData.age),
+        height: optionalFloat(formData.height),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Erro ao criar request");
-      }
-
-      setSuccess("Request de personagem enviado com sucesso! Aguarde a aprovação do mestre.");
-      setFormData({
-        codename: "",
-        name: "",
-        raca_id: "",
-        classe_id: "",
-        region_id: "",
-        age: "",
-        height: "",
-        description: "",
-      });
-
-      setTimeout(() => setSuccess(null), 5000);
+      setSuccess("Solicitação enviada! Aguarde a aprovação do mestre.");
+      setFormData(EMPTY_FORM);
+      onCreated?.();
     } catch (err) {
-      console.error("Erro:", err);
-      setError(err.message);
+      setError(errorMessage(err, "Erro ao enviar a solicitação."));
     } finally {
       setSubmitting(false);
     }

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import api from '../services/api'
+import api, { assetUrl, errorMessage } from '../services/api'
+import { selectedCharacterKey } from '../lib/session'
+import LoadingScreen from '../components/common/LoadingScreen'
 import { Button, Card } from '../components/common'
 import CharacterRequestForm from './CharacterRequestForm'
 
 function CharacterSelectCard({ character, selected, onSelect, onEnter }) {
-  const portrait = character.portrait || character.race?.image || character.current_map?.image || null
+  const portrait = assetUrl(character.portrait || character.race?.image || character.current_map?.image || null)
 
   return (
     <button
@@ -59,7 +61,7 @@ export default function PlayerCharacterSelectPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const storageKey = user?.id ? `player-dashboard:selected-character:${user.id}` : null
+  const storageKey = selectedCharacterKey(user?.id)
   const selectedCharacter = useMemo(
     () => characters.find((character) => character.id === selectedCharacterId) || null,
     [characters, selectedCharacterId],
@@ -77,15 +79,14 @@ export default function PlayerCharacterSelectPage() {
         return
       }
 
-      const stored = storageKey ? Number(localStorage.getItem(storageKey)) : NaN
+      const stored = Number(localStorage.getItem(storageKey))
       if (stored && nextCharacters.some((character) => character.id === stored)) {
         setSelectedCharacterId(stored)
       } else {
         setSelectedCharacterId(nextCharacters[0].id)
       }
     } catch (err) {
-      console.error('[PlayerCharacterSelectPage] Erro ao carregar personagens:', err)
-      setError('Não foi possível carregar seus personagens.')
+      setError(errorMessage(err, 'Não foi possível carregar seus personagens.'))
     } finally {
       setLoading(false)
     }
@@ -97,9 +98,7 @@ export default function PlayerCharacterSelectPage() {
 
   const handleSelect = (characterId) => {
     setSelectedCharacterId(characterId)
-    if (storageKey) {
-      localStorage.setItem(storageKey, String(characterId))
-    }
+    localStorage.setItem(storageKey, String(characterId))
   }
 
   const handleEnter = (characterId) => {
@@ -107,16 +106,7 @@ export default function PlayerCharacterSelectPage() {
     navigate('/player')
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#040815] px-6 text-white">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-cyan-300" />
-          <p className="text-sm uppercase tracking-[0.35em] text-slate-300">Carregando personagens...</p>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <LoadingScreen label="Carregando personagens..." />
 
   return (
     <div className="relative min-h-screen overflow-hidden text-white">
@@ -145,7 +135,7 @@ export default function PlayerCharacterSelectPage() {
               </div>
               <div className="border border-white/10 bg-white/5 px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Status</p>
-                <p className="mt-1 text-lg font-semibold text-orange-200">Pronto para entrar</p>
+                <p className="mt-1 text-lg font-semibold text-orange-200">{selectedCharacter ? 'Pronto para entrar' : 'Aguardando'}</p>
               </div>
             </div>
           </div>
@@ -195,8 +185,8 @@ export default function PlayerCharacterSelectPage() {
                       <p className="mt-2 text-lg font-semibold text-cyan-200">{selectedCharacter.mana}/{selectedCharacter.maxMana}</p>
                     </div>
                     <div className="border border-white/10 bg-white/5 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Energia</p>
-                      <p className="mt-2 text-lg font-semibold text-orange-200">{selectedCharacter.vigor}/{selectedCharacter.maxVigor}</p>
+                      <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Pontos livres</p>
+                      <p className="mt-2 text-lg font-semibold text-orange-200">{selectedCharacter.freePoints ?? 0}</p>
                     </div>
                     <div className="border border-white/10 bg-white/5 p-4">
                       <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Próximo passo</p>

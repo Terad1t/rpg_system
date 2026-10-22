@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import { useUserNotificationsWebSocket } from '../hooks/useUserNotificationsWebSocket'
-import { getMasterBadges, setMasterBadges } from '../utils/badges'
+import { useCallback, useEffect, useState } from "react";
+import { useNotificationEvent } from "../context/NotificationsContext";
+import api, { errorMessage } from "../services/api";
+import { getMasterBadges, setMasterBadges } from "../utils/badges";
 
 const DEFAULT_ATTRIBUTES = {
   hp: 20,
@@ -16,120 +16,67 @@ const DEFAULT_ATTRIBUTES = {
   subclass: "",
 }
 
+function decrementRequestsBadge() {
+  const badges = getMasterBadges()
+  setMasterBadges({ ...badges, requests: Math.max(0, (badges.requests || 0) - 1) })
+}
+
 export default function CharacterRequests() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [actionError, setActionError] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [approvingId, setApprovingId] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
   const [attributes, setAttributes] = useState(DEFAULT_ATTRIBUTES);
-  const { user } = useAuth()
-  const { notifications } = useUserNotificationsWebSocket(user?.id)
   const [highlightedId, setHighlightedId] = useState(null);
 
-  useEffect(() => {
-    loadRequests();
-  }, []);
-
-  useEffect(() => {
-    if (!notifications || notifications.length === 0) return
-    const latest = notifications[notifications.length - 1]
-    if (latest?.type === 'character_request_created' && latest?.data?.request_id) {
-      setHighlightedId(latest.data.request_id)
-      setTimeout(() => setHighlightedId(null), 8000)
-    }
-    if (latest?.type === 'character_request_approved' || latest?.type === 'character_request_rejected') {
-      // sync badge if backend or other tab updated it (requests)
-      try {
-        const badges = getMasterBadges() || {}
-        const next = { ...badges, requests: Math.max(0, (badges.requests || 0) - 1) }
-        setMasterBadges(next)
-      } catch {}
-    }
-  }, [notifications])
-
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     try {
-      const response = await fetch("/api/characters/requests/", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-
-      if (!response.ok) {
-        let detail = "Erro ao buscar requisições";
-        try {
-          const contentType = response.headers.get("content-type") || "";
-          if (contentType.includes("application/json")) {
-            const errData = await response.json();
-            if (errData && typeof errData === "object") {
-              if ("detail" in errData) {
-                const d = errData.detail;
-                detail = typeof d === "string" ? d : JSON.stringify(d, null, 2);
-              } else {
-                detail = JSON.stringify(errData, null, 2);
-              }
-            } else {
-              detail = String(errData);
-            }
-          } else {
-            const text = await response.text();
-            detail = text || detail;
-          }
-        } catch (e) {
-          detail = e?.message || detail;
-        }
-        throw new Error(detail);
-      }
-
-      const data = await response.json();
-      setRequests(data || []);
+      const response = await api.get("/api/characters/requests/");
+      setRequests(response.data || []);
       setError(null);
     } catch (err) {
-      console.error("Erro:", err);
-      let msg = err;
-      if (err && typeof err === "object") {
-        msg = err.message || "Erro ao buscar requisições";
-      }
-      setError(String(msg));
+      setError(errorMessage(err, "Erro ao buscar requisições"));
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    loadRequests();
+  }, [loadRequests]);
+
+  useEffect(() => {
+    if (!highlightedId) return undefined;
+    const timer = setTimeout(() => setHighlightedId(null), 8000);
+    return () => clearTimeout(timer);
+  }, [highlightedId]);
+
+  useNotificationEvent("character_request_created", (notification) => {
+    setHighlightedId(notification.data?.request_id ?? null);
+    loadRequests();
+  });
+
+  const finishRequest = (requestId, status) => {
+    setRequests((prev) => prev.map((r) => (r.id === requestId ? { ...r, status } : r)));
+    setSelectedRequest(null);
+    setActionError(null);
+    decrementRequestsBadge();
   };
 
   const handleApprove = async (requestId) => {
     setApprovingId(requestId);
-
     try {
-      const response = await fetch(`/api/characters/requests/${requestId}/approve`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(attributes),
+      await api.post(`/api/characters/requests/${requestId}/approve`, {
+        ...attributes,
+        subclass: attributes.subclass || null,
       });
-
-      if (!response.ok) {
-        throw new Error("Erro ao aprovar requisição");
-      }
-
-      // Atualiza status local
-      setRequests((prev) =>
-        prev.map((r) => (r.id === requestId ? { ...r, status: "approved" } : r))
-      );
-      setSelectedRequest(null);
+      finishRequest(requestId, "approved");
       setAttributes(DEFAULT_ATTRIBUTES);
-      // decrement master badge count (requests)
-      try {
-        const badges = getMasterBadges() || {}
-        const next = { ...badges, requests: Math.max(0, (badges.requests || 0) - 1) }
-        setMasterBadges(next)
-      } catch {}
     } catch (err) {
-      console.error("Erro:", err);
-      alert("Erro ao aprovar: " + err.message);
+      setActionError(errorMessage(err, "Erro ao aprovar a requisição."));
     } finally {
       setApprovingId(null);
     }
@@ -137,31 +84,11 @@ export default function CharacterRequests() {
 
   const handleReject = async (requestId) => {
     setRejectingId(requestId);
-
     try {
-      const response = await fetch(`/api/characters/requests/${requestId}/reject`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Erro ao rejeitar requisição");
-      }
-
-      setRequests((prev) =>
-        prev.map((r) => (r.id === requestId ? { ...r, status: "rejected" } : r))
-      );
-      setSelectedRequest(null);
-      try {
-        const badges = getMasterBadges() || {}
-        const next = { ...badges, requests: Math.max(0, (badges.requests || 0) - 1) }
-        setMasterBadges(next)
-      } catch {}
+      await api.post(`/api/characters/requests/${requestId}/reject`);
+      finishRequest(requestId, "rejected");
     } catch (err) {
-      console.error("Erro:", err);
-      alert("Erro ao rejeitar: " + err.message);
+      setActionError(errorMessage(err, "Erro ao rejeitar a requisição."));
     } finally {
       setRejectingId(null);
     }
@@ -172,15 +99,11 @@ export default function CharacterRequests() {
   }
 
   if (error) {
-    let errorString = error;
-    if (typeof error !== 'string') {
-      try {
-        errorString = JSON.stringify(error, null, 2);
-      } catch {
-        errorString = String(error);
-      }
-    }
-    return <div className="text-red-500">Erro: {errorString}</div>;
+    return (
+      <p className="rounded border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200" role="alert">
+        {error}
+      </p>
+    );
   }
 
   const pendingRequests = requests.filter((r) => r.status === "pending");
@@ -192,6 +115,12 @@ export default function CharacterRequests() {
       <h2 className="text-2xl font-bold text-orange-500 mb-6">
         Requisições de Personagens
       </h2>
+
+      {actionError && (
+        <p className="mb-4 rounded border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200" role="alert">
+          {actionError}
+        </p>
+      )}
 
       {/* Resumo */}
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -241,7 +170,7 @@ export default function CharacterRequests() {
                     )}
                     {req.description && (
                       <p className="text-sm text-gray-400 mt-2 line-clamp-2">
-                        "{req.description}"
+                        &ldquo;{req.description}&rdquo;
                       </p>
                     )}
                   </div>

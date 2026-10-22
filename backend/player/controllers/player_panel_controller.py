@@ -52,11 +52,6 @@ def _serialize_character(character: Character):
         "tipo": character.tipo,
         "status": character.tipo,
         "class": character.classe.name if character.classe else "Desconhecida",
-        "level": 1,
-        "vigor": 0,
-        "maxVigor": 0,
-        "xp": 0,
-        "maxXp": 0,
         "attributes": attributes,
         "race": {
             "id": character.raca.id if character.raca else None,

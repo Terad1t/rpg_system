@@ -1,11 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { useUserNotificationsWebSocket } from '../hooks/useUserNotificationsWebSocket'
-import api from '../services/api'
+import { useNotificationEvent } from '../context/NotificationsContext'
+import api, { assetUrl, errorMessage } from '../services/api'
+import { selectedCharacterKey } from '../lib/session'
 import { Button, Card, Modal } from '../components/common'
+import LoadingScreen from '../components/common/LoadingScreen'
 import PlayerCharacter from '../components/player/PlayerCharacter'
+import PlayerCharacterEditor from '../components/player/PlayerCharacterEditor'
 import PlayerInventory from '../components/player/PlayerInventory'
+import PlayerSkills from '../components/player/PlayerSkills'
 import PlayerChat from '../components/player/PlayerChat'
 
 function getCharacterMapId(character) {
@@ -17,7 +21,7 @@ function getCharacterMapName(character) {
 }
 
 function getCharacterPortrait(character) {
-  return character?.portrait || character?.race?.image || character?.current_map?.image || null
+  return assetUrl(character?.portrait || character?.race?.image || character?.current_map?.image || null)
 }
 
 function MapNode({ node, depth = 0, selectedMapId = null }) {
@@ -140,91 +144,63 @@ function SessionMetric({ label, value, accentClassName = 'text-white' }) {
 export default function PlayerSessionPage() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
-  const { notifications } = useUserNotificationsWebSocket(user?.id)
   const [panelData, setPanelData] = useState({ characters: [], races: [], world_map: [] })
   const [selectedCharacterId, setSelectedCharacterId] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [selectionResolved, setSelectionResolved] = useState(false)
   const [error, setError] = useState(null)
   const [inviteModal, setInviteModal] = useState(null)
-  const selectionStorageKey = user?.id ? `player-dashboard:selected-character:${user.id}` : null
+  const [editing, setEditing] = useState(false)
+  const selectionStorageKey = selectedCharacterKey(user?.id)
 
-  const openFightRoom = (fightId, fightName = null, started = false) => {
-    if (!fightId) return
-    navigate(`/player/fight/${fightId}`, {
-      replace: true,
-      state: {
-        fightId,
-        fightName: fightName || `#${fightId}`,
-        started,
-      },
-    })
-  }
+  const openFightRoom = useCallback(
+    (fightId, fightName = null, started = false) => {
+      if (!fightId) return
+      navigate(`/player/fight/${fightId}`, {
+        replace: true,
+        state: { fightId, fightName: fightName || `#${fightId}`, started },
+      })
+    },
+    [navigate],
+  )
 
-  const loadPanel = async () => {
+  const loadPanel = useCallback(async () => {
     try {
       const response = await api.get('/api/player-panel/')
       const nextPanelData = response.data || { characters: [], races: [], world_map: [] }
       setPanelData(nextPanelData)
 
-      const nextCharacters = (nextPanelData.characters || []).slice(0, 3)
-      const storedCharacterId = selectionStorageKey ? Number(localStorage.getItem(selectionStorageKey)) : NaN
-
-      if (storedCharacterId && nextCharacters.some((character) => character.id === storedCharacterId)) {
-        setSelectedCharacterId(storedCharacterId)
-      } else if (nextCharacters.length > 0) {
-        setSelectedCharacterId(nextCharacters[0].id)
-        if (selectionStorageKey) {
-          localStorage.setItem(selectionStorageKey, String(nextCharacters[0].id))
-        }
-      } else {
-        setSelectedCharacterId(null)
-      }
-
+      const nextCharacters = nextPanelData.characters || []
+      const storedCharacterId = Number(localStorage.getItem(selectionStorageKey))
+      const keep = nextCharacters.some((character) => character.id === storedCharacterId)
+      const nextId = keep ? storedCharacterId : (nextCharacters[0]?.id ?? null)
+      setSelectedCharacterId(nextId)
+      if (nextId) localStorage.setItem(selectionStorageKey, String(nextId))
       setError(null)
     } catch (err) {
-      console.error('Erro ao carregar painel do jogador:', err)
-      setError('Não foi possível carregar os dados da sessão.')
+      setError(errorMessage(err, 'Não foi possível carregar os dados da sessão.'))
     } finally {
       setLoading(false)
-      setSelectionResolved(true)
     }
-  }
+  }, [selectionStorageKey])
 
   useEffect(() => {
     loadPanel()
-  }, [])
+  }, [loadPanel])
 
-  useEffect(() => {
-    if (notifications && notifications.length > 0) {
-      const latestNotification = notifications[notifications.length - 1]
-      if (latestNotification?.data?.action === 'created' && latestNotification?.data?.character_id) {
-        loadPanel()
-      }
-
-      // handle fight invite
-      if (latestNotification?.type === 'fight_invite') {
-        setInviteModal(latestNotification.data || { fight_id: latestNotification?.data?.fight_id })
-      }
-
-      if (latestNotification?.type === 'fight_started') {
-        const fightId = Number(latestNotification?.data?.fight_id)
-        if (fightId) {
-          openFightRoom(fightId, latestNotification?.data?.name || latestNotification?.data?.fight_name, true)
-        }
-      }
-    }
-  }, [notifications])
+  useNotificationEvent(['character_request_approved', 'character_applied', 'character_effects_updated'], loadPanel)
+  useNotificationEvent('fight_invite', (notification) => setInviteModal(notification.data))
+  useNotificationEvent('fight_started', (notification) => {
+    const fightId = Number(notification.data?.fight_id)
+    if (fightId) openFightRoom(fightId, notification.data?.name, true)
+  })
 
   const respondToInvite = async (accept) => {
     if (!inviteModal) return
     try {
-      await api.post(`/api/fights/${inviteModal.fight_id}/respond`, { user_id: user.id, accept })
-      if (accept) {
-        openFightRoom(inviteModal.fight_id, inviteModal.name, false)
-      }
+      await api.post(`/api/fights/${inviteModal.fight_id}/respond`, { accept })
+      if (accept) openFightRoom(inviteModal.fight_id, inviteModal.name, false)
     } catch (err) {
-      console.error('Erro ao responder invite', err)
+      setError(errorMessage(err, 'Não foi possível responder ao convite.'))
     } finally {
       setInviteModal(null)
     }
@@ -244,16 +220,7 @@ export default function PlayerSessionPage() {
     navigate('/player/select')
   }
 
-  if (loading || !selectionResolved) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-transparent px-6">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-cyan-300" />
-          <p className="text-sm uppercase tracking-[0.35em] text-slate-300">Carregando sessão...</p>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <LoadingScreen label="Carregando sessão..." />
 
   if (!selectedCharacter) {
     return <Navigate to="/player/select" replace />
@@ -295,13 +262,16 @@ export default function PlayerSessionPage() {
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <SessionMetric label="HP" value={`${selectedCharacter.hp}/${selectedCharacter.maxHp}`} accentClassName="text-white" />
               <SessionMetric label="Mana" value={`${selectedCharacter.mana}/${selectedCharacter.maxMana}`} accentClassName="text-cyan-200" />
-              <SessionMetric label="Energia" value={`${selectedCharacter.vigor}/${selectedCharacter.maxVigor}`} accentClassName="text-orange-200" />
+              <SessionMetric label="Pontos livres" value={`${selectedCharacter.freePoints ?? 0}`} accentClassName="text-orange-200" />
               <SessionMetric label="Itens" value={`${inventoryCount}`} accentClassName="text-white" />
             </div>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={loadPanel}>Atualizar sessão</Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing((value) => !value)}>
+              {editing ? 'Fechar edição' : 'Editar ficha'}
+            </Button>
             <Button size="sm" variant="ghost" onClick={handleReturnToSelection}>Trocar personagem</Button>
             <Button size="sm" variant="ghost" onClick={logout}>Sair</Button>
           </div>
@@ -324,6 +294,9 @@ export default function PlayerSessionPage() {
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
           <section className="space-y-6">
+            {editing && (
+              <PlayerCharacterEditor key={selectedCharacter.id} character={selectedCharacter} onUpdate={() => loadPanel()} />
+            )}
             <Card className="overflow-hidden border border-white/10 bg-[#08111f]/90">
               <div className="grid gap-6 p-6 md:grid-cols-[260px_minmax(0,1fr)] xl:p-8">
                 <div className="space-y-4">
@@ -355,8 +328,8 @@ export default function PlayerSessionPage() {
                       <p className="mt-2 text-2xl font-black text-cyan-200">{selectedCharacter.mana}/{selectedCharacter.maxMana}</p>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Energia</p>
-                      <p className="mt-2 text-2xl font-black text-orange-200">{selectedCharacter.vigor}/{selectedCharacter.maxVigor}</p>
+                      <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Pontos livres</p>
+                      <p className="mt-2 text-2xl font-black text-orange-200">{selectedCharacter.freePoints ?? 0}</p>
                     </div>
                   </div>
 
@@ -413,6 +386,7 @@ export default function PlayerSessionPage() {
           <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
             <PlayerCharacter character={selectedCharacter} />
             <PlayerInventory characterId={selectedCharacter.id} />
+            <PlayerSkills characterId={selectedCharacter.id} />
 
             <Card title="Personagens" className="border border-white/10 bg-[#08111f]/90">
               <div className="space-y-3">

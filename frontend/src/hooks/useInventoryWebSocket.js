@@ -1,130 +1,66 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from 'react'
+import api, { errorMessage } from '../services/api'
+import { useSocket } from './useSocket'
 
+/** Aplica um evento `inventory_update` do servidor à lista local. */
+export function applyInventoryEvent(inventory, { action, item_id: itemId, item_name: itemName, quantity }) {
+  const existing = inventory.find((entry) => entry.item?.id === itemId)
+
+  if (action === 'added') {
+    if (existing) {
+      return inventory.map((entry) => (entry === existing ? { ...entry, quantidade: entry.quantidade + quantity } : entry))
+    }
+    return [...inventory, { id: `item-${itemId}`, item_id: itemId, item: { id: itemId, name: itemName }, quantidade: quantity }]
+  }
+
+  if (action === 'removed' || action === 'updated') {
+    const nextQuantity = action === 'removed' ? (existing?.quantidade ?? 0) - quantity : quantity
+    if (!existing) {
+      return nextQuantity > 0
+        ? [...inventory, { id: `item-${itemId}`, item_id: itemId, item: { id: itemId, name: itemName }, quantidade: nextQuantity }]
+        : inventory
+    }
+    return inventory
+      .map((entry) => (entry === existing ? { ...entry, quantidade: nextQuantity } : entry))
+      .filter((entry) => entry.quantidade > 0)
+  }
+
+  return inventory
+}
+
+/** Inventário do personagem, carregado da API e mantido atualizado por WebSocket. */
 export function useInventoryWebSocket(characterId) {
-  const [inventory, setInventory] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [inventory, setInventory] = useState([])
+  const [loading, setLoading] = useState(Boolean(characterId))
+  const [error, setError] = useState(null)
 
-  // Carrega inventário inicial
-  const loadInventory = useCallback(async () => {
+  const reloadInventory = useCallback(async () => {
     if (!characterId) {
-      setInventory([]);
-      setLoading(false);
-      return;
+      setInventory([])
+      setLoading(false)
+      return
     }
-
+    setLoading(true)
     try {
-      const role = window.location.pathname.startsWith('/master') ? 'master' : (window.location.pathname.startsWith('/player') ? 'player' : null)
-      const token = role ? localStorage.getItem(`token:${role}`) : localStorage.getItem('token')
-      const response = await fetch(`/api/characters/${characterId}/inventory/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) {
-        throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
-      }
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error(`Resposta não é JSON: ${contentType}`);
-      }
-      const data = await response.json();
-      setInventory(data);
-      setError(null);
+      const response = await api.get(`/api/characters/${characterId}/inventory/`)
+      setInventory(response.data || [])
+      setError(null)
     } catch (err) {
-      console.error("Erro ao carregar inventário:", err);
-      setError(err.message);
+      setError(errorMessage(err, 'Não foi possível carregar o inventário.'))
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [characterId]);
+  }, [characterId])
 
   useEffect(() => {
-    if (!characterId) return;
-    loadInventory();
-  }, [loadInventory]);
+    reloadInventory()
+  }, [reloadInventory])
 
-  // Conecta ao WebSocket
-  useEffect(() => {
-    if (!characterId) return;
+  const handleMessage = useCallback((message) => {
+    if (message?.type === 'inventory_update') setInventory((prev) => applyInventoryEvent(prev, message))
+  }, [])
 
-    const role = window.location.pathname.startsWith('/master') ? 'master' : (window.location.pathname.startsWith('/player') ? 'player' : null)
-    const token = role ? localStorage.getItem(`token:${role}`) : localStorage.getItem('token')
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsBase = import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.hostname}:8000`;
-    const wsUrl = `${wsBase}/ws/inventory/${characterId}`;
+  const { isConnected } = useSocket(characterId ? `/ws/inventory/${characterId}` : null, handleMessage)
 
-    const sep = wsUrl.includes('?') ? '&' : '?'
-    const wsWithToken = `${wsUrl}${sep}token=${encodeURIComponent(token)}`
-    const ws = new WebSocket(wsWithToken);
-
-    ws.onopen = () => {
-      setIsConnected(true);
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        
-        if (message.type === "inventory_update") {
-          const { action, item_id, item_name, quantity } = message;
-
-          setInventory((prev) => {
-            if (action === "added") {
-              const existing = prev.find((inv) => inv.item?.id === item_id);
-              if (existing) {
-                return prev.map((inv) =>
-                  inv.item?.id === item_id
-                    ? { ...inv, quantidade: inv.quantidade + quantity }
-                    : inv
-                );
-              } else {
-                return [
-                  ...prev,
-                  {
-                    item_id,
-                    item: { id: item_id, name: item_name },
-                    quantidade: quantity,
-                  },
-                ];
-              }
-            } else if (action === "removed") {
-              return prev
-                .map((inv) =>
-                  inv.item?.id === item_id
-                    ? { ...inv, quantidade: inv.quantidade - quantity }
-                    : inv
-                )
-                .filter((inv) => inv.quantidade > 0);
-            }
-            return prev;
-          });
-        }
-      } catch (err) {
-        console.error("Erro ao processar mensagem WebSocket:", err);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setIsConnected(false);
-    };
-
-    ws.onclose = () => {
-      setIsConnected(false);
-    };
-
-    return () => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
-    };
-  }, [characterId]);
-
-  return { inventory, isConnected, loading, error, reloadInventory: loadInventory };
+  return { inventory, isConnected, loading, error, reloadInventory }
 }

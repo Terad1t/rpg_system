@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useAuth } from '../context/AuthContext'
-import api from '../services/api'
-import { useUserNotificationsWebSocket } from '../hooks/useUserNotificationsWebSocket'
+import api, { errorMessage } from '../services/api'
 import { Button, Card } from '../components/common'
 
 const EMPTY_FORM = {
@@ -15,8 +13,6 @@ const EMPTY_FORM = {
 }
 
 export default function ItemManager() {
-  const { user } = useAuth()
-  const { isConnected, notifications, clearNotifications } = useUserNotificationsWebSocket(user?.id)
   const [items, setItems] = useState([])
   const [characters, setCharacters] = useState([])
   const [loading, setLoading] = useState(true)
@@ -31,13 +27,12 @@ export default function ItemManager() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [itemsResponse, charactersResponse] = await Promise.all([api.get('/api/items/'), api.get('/api/characters/')])
+      const [itemsResponse, charactersResponse] = await Promise.all([api.get('/api/items/'), api.get('/api/master/characters/')])
       setItems(itemsResponse.data || [])
       setCharacters(charactersResponse.data || [])
       setError(null)
     } catch (err) {
-      console.error('Erro ao carregar itens:', err)
-      setError(err.response?.data?.detail || err.message || 'Erro ao carregar dados')
+      setError(errorMessage(err, 'Erro ao carregar dados'))
     } finally {
       setLoading(false)
     }
@@ -87,7 +82,7 @@ export default function ItemManager() {
       resetForm()
       await loadData()
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao salvar item' })
+      setMessage({ type: 'error', text: errorMessage(err, 'Erro ao salvar item') })
     }
   }
 
@@ -112,7 +107,7 @@ export default function ItemManager() {
       setMessage({ type: 'success', text: 'Item removido com sucesso.' })
       await loadData()
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao deletar item' })
+      setMessage({ type: 'error', text: errorMessage(err, 'Erro ao deletar item') })
     }
   }
 
@@ -137,12 +132,20 @@ export default function ItemManager() {
       setAssignQuantity(1)
       await loadData()
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Erro ao adicionar item ao inventário' })
+      setMessage({ type: 'error', text: errorMessage(err, 'Erro ao adicionar item ao inventário') })
     }
   }
 
   if (loading) {
     return <div className="text-secondary">Carregando dicionário de itens...</div>
+  }
+
+  if (error) {
+    return (
+      <p className="rounded border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200" role="alert">
+        {error}
+      </p>
+    )
   }
 
   return (
@@ -152,10 +155,6 @@ export default function ItemManager() {
           <h2 className="text-2xl font-bold text-orange-400">Dicionário Global de Itens</h2>
           <p className="mt-1 text-sm text-slate-300">Crie, edite e exclua itens, ou adicione-os diretamente ao inventário de qualquer personagem.</p>
         </div>
-        <div className={`flex items-center gap-2 px-3 py-1 rounded text-sm ${isConnected ? 'bg-green-900 text-green-100' : 'bg-red-900 text-red-100'}`}>
-          <span className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-          {isConnected ? 'Notificações ativas' : 'Desconectado'}
-        </div>
       </div>
 
       {message && (
@@ -164,20 +163,6 @@ export default function ItemManager() {
         </Card>
       )}
 
-      {notifications.length > 0 && (
-        <Card className="border border-white/10 bg-[#08111f]/90 p-4">
-          <div className="space-y-2">
-            {notifications.map((notif, index) => (
-              <div key={`${notif.type}-${index}`} className="rounded border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-100">
-                {notif.type === 'inventory_update' ? `Inventário atualizado: ${notif.data?.item_name}` : notif.type}
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 flex justify-end">
-            <Button variant="ghost" onClick={clearNotifications}>Limpar notificações</Button>
-          </div>
-        </Card>
-      )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Card title={editingId ? 'Editar Item' : 'Criar Item'} className="border border-white/10 bg-[#08111f]/90">

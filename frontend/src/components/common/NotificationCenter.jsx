@@ -1,10 +1,20 @@
 import { useMemo, useState } from 'react'
 
+const FRIENDLY_TYPES = {
+  fight_invite: 'Convite para luta',
+  fight_started: 'Luta iniciada',
+  fight_event: 'Ação na luta',
+  turn_changed: 'Mudança de turno',
+  character_applied: 'Ficha atualizada pelo mestre',
+  character_effects_updated: 'Efeitos expiraram',
+  character_visibility_changed: 'Visibilidade da ficha alterada',
+}
+
 function formatNotification(n) {
   if (!n) return 'Notificação'
 
   const type = n.type || 'notification'
-  const ts = n.timestamp ? new Date(n.timestamp).toLocaleString() : null
+  const ts = n.timestamp ? new Date(`${n.timestamp}Z`).toLocaleString('pt-BR') : null
 
   if (type === 'character_request_created') {
     const name = n.data?.name || 'Personagem'
@@ -31,11 +41,19 @@ function formatNotification(n) {
     return `${msg}${ts ? ` • ${ts}` : ''}`
   }
 
-  try {
-    return `${type}${ts ? ` • ${ts}` : ''} — ${JSON.stringify(n.data ?? n)}`
-  } catch {
-    return `${type}${ts ? ` • ${ts}` : ''}`
+  if (type === 'fight_invite_response') {
+    const answer = n.data?.accept ? 'aceitou' : 'recusou'
+    return `Jogador ${n.data?.user_id} ${answer} o convite da luta #${n.data?.fight_id}${ts ? ` • ${ts}` : ''}`
   }
+
+  if (type === 'fight_invite_results') {
+    const accepted = n.data?.accepted?.length ?? 0
+    const declined = n.data?.declined?.length ?? 0
+    return `Convites da luta #${n.data?.fight_id} encerrados: ${accepted} aceito(s), ${declined} recusado(s)${ts ? ` • ${ts}` : ''}`
+  }
+
+  const label = FRIENDLY_TYPES[type] || type.replace(/_/g, ' ')
+  return `${label}${ts ? ` • ${ts}` : ''}`
 }
 
 export default function NotificationCenter({ notifications = [], isConnected = false, onClear }) {

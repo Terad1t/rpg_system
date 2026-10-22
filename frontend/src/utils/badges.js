@@ -1,6 +1,11 @@
+// Contadores de pendências do painel do Master (ex.: solicitações novas),
+// guardados no navegador e sincronizados entre componentes por evento.
+const STORAGE_KEY = 'master-badges'
+const EVENT_NAME = 'master-badges-updated'
+
 export function getMasterBadges() {
   try {
-    const raw = localStorage.getItem('master-badges')
+    const raw = localStorage.getItem(STORAGE_KEY)
     return raw ? JSON.parse(raw) : {}
   } catch {
     return {}
@@ -8,16 +13,11 @@ export function getMasterBadges() {
 }
 
 export function setMasterBadges(badges) {
+  const next = badges || {}
   try {
-    localStorage.setItem('master-badges', JSON.stringify(badges || {}))
-  } catch {}
-  try {
-    window.dispatchEvent(new CustomEvent('master-badges-updated', { detail: badges || {} }))
-  } catch {}
-}
-
-export function onMasterBadgesUpdated(cb) {
-  const handler = (e) => cb(e.detail || {})
-  window.addEventListener('master-badges-updated', handler)
-  return () => window.removeEventListener('master-badges-updated', handler)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  } catch {
+    // Sem armazenamento disponível: o contador vale só até recarregar a página.
+  }
+  window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: next }))
 }
