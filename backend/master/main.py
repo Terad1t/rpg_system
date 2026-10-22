@@ -47,7 +47,7 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     Base.metadata.create_all(bind=engine)
-    added = ensure_schema_updates(engine)
+    added = ensure_schema_updates(engine, Base.metadata)
     if added:
         logger.info("Schema atualizado: %s", ", ".join(added))
     tasks.spawn(run_effects_loop(settings.effects_interval_seconds))

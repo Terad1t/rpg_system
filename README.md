@@ -1,282 +1,104 @@
-
 # RPG System
 
-Sistema de RPG com API em FastAPI (Master + Player), autenticação JWT e comunicação em tempo real via WebSockets (chat, updates e inventário). Este repositório também inclui um frontend React (Vite + Tailwind).
+Plataforma web para mesas de RPG: o **Mestre** cadastra o mundo (raças, classes, itens, habilidades, buffs), aprova personagens e conduz lutas por turno; os **jogadores** acompanham a ficha, o inventário e o mapa, conversam no chat e agem nas lutas, tudo em tempo real.
 
-## Visão geral
+**Stack:** FastAPI · SQLAlchemy 2 · Pydantic 2 · WebSockets · React 18 · Vite · Tailwind · Vitest · Pytest
 
-- **Backend (FastAPI)** em `backend/master/main.py` com rotas de Master e de Player.
-- **Autenticação JWT** (login/senha/PIN) e papéis `master` e `player`.
-- **WebSockets**:
-	- Chat em tempo real (players) em `/api/chat/ws`
-	- Updates em tempo real (players) em `/api/updates/ws`
-	- Atualizações de inventário em `/ws/inventory/{character_id}`
-	- Notificações por usuário em `/ws/user-updates/{user_id}`
-- **Banco**: SQLite local (`./rpg_system.db`) via SQLAlchemy.
+## Funcionalidades
 
-> Nota importante sobre rotas: o backend inclui a maioria dos routers com `prefix="/api"`. Então, por exemplo, `auth` é servido em `/api/auth/...`.
+| Mestre | Jogador |
+| --- | --- |
+| Cria as contas dos jogadores (login, senha e PIN) | Pede a criação de personagens (até 3) |
+| Aprova ou recusa personagens e define os atributos iniciais | Edita codinome, descrição e retrato |
+| Cadastra raças, classes, itens, habilidades e buffs/debuffs | Vê ficha, atributos, efeitos ativos, inventário e habilidades |
+| Aplica dano, cura e efeitos temporários na ficha | Recebe convites de luta e age na sua vez |
+| Convida jogadores para lutas e controla os turnos | Conversa no chat global usando o codinome |
+| Painel com estatísticas de dano e cura por sessão | Atualizações ao vivo, sem recarregar a página |
 
-## Ferramentas usadas
+## Como rodar localmente
 
-### Backend e dados
-
-- Python 3.14+
-- FastAPI
-- Uvicorn
-- SQLAlchemy
-- Alembic
-- SQLite
-- JWT com `python-jose`
-- `passlib` e `bcrypt` para senhas
-- `python-multipart` para formulários e uploads
-- `websockets` para comunicação em tempo real
-- `requests` para integrações HTTP
-- `Flask`
-- `matplotlib`
-- `pandas`
-- `scikit-learn`
-- `ttkbootstrap`
-
-### Frontend
-
-- React
-- React DOM
-- Vite
-- Tailwind CSS
-- Axios
-- React Router DOM
-- Recharts
-
-### Testes e qualidade
-
-- Vitest
-- Testing Library (`@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`)
-- jsdom
-- `@vitest/coverage-v8`
-- `@vitest/ui`
-- PostCSS
-- Autoprefixer
-
-## Estrutura do repositório
-
-- `backend/master/`: API principal (Master) + recursos compartilhados
-- `backend/player/`: rotas e serviços específicos do Player
-- `frontend/`: app React (Vite)
-- `alembic/`: configuração de migrations
-- Scripts úteis: `populate_data.py`, `create_test_players.py`, `send_message_single.py`, etc.
-
-## Requisitos
-
-- Python (ver `pyproject.toml`: `requires-python = ">=3.14"`)
-- Node.js (recomendado 18+)
-
-## Variáveis de ambiente
-
-Crie um arquivo `.env` na raiz do repositório (ele já está no `.gitignore`).
-
-### Backend
-
-- `SECRET_KEY` (obrigatória): chave usada para assinar/validar JWT.
-- `MASTER_BOOTSTRAP_TOKEN` (recomendada): habilita a rota de inicialização segura do Master.
-
-Exemplo de `.env`:
-
-```env
-SECRET_KEY=dev-secret-change-me
-MASTER_BOOTSTRAP_TOKEN=dev-bootstrap-token-change-me
-```
-
-### Frontend
-
-O frontend aceita as seguintes variáveis (opcionais):
-
-- `VITE_API_URL` (default: `http://127.0.0.1:8000`)
-- `VITE_WS_URL` (default: `ws://127.0.0.1:8000`)
-
-Você pode criar `frontend/.env.local`:
-
-```env
-VITE_API_URL=http://127.0.0.1:8000
-VITE_WS_URL=ws://127.0.0.1:8000
-```
-
-## Rodando o backend
-
-### 1) Instalar dependências
-
-As dependências estão listadas em `pyproject.toml`.
-
-- Se você está com a versão de Python compatível com `requires-python`, pode usar:
+Pré-requisitos: [uv](https://docs.astral.sh/uv/) (Python 3.12+) e Node.js 20+.
 
 ```bash
-python -m venv .venv
-```
+# 1. Configuração
+cp .env.example .env
+# edite .env e preencha SECRET_KEY:
+uv run python -c "import secrets; print(secrets.token_urlsafe(48))"
 
-Windows (PowerShell):
+# 2. Backend (http://127.0.0.1:8000, documentação em /docs)
+uv sync
+uv run python -m scripts.create_user --role master --login mestre   # pede senha e PIN
+uv run python -m scripts.seed_demo                                   # opcional: dados de exemplo
+uv run uvicorn backend.master.main:app --reload
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-pip install -e .
-```
-
-- Se seu Python não atender `requires-python` do projeto, instale manualmente os pacotes necessários (mínimo para a API):
-
-```powershell
-pip install fastapi uvicorn sqlalchemy alembic passlib python-jose[cryptography] python-multipart websockets
-```
-
-### 2) Subir a API
-
-```powershell
-uvicorn backend.master.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-Prova de vida:
-
-- Swagger: `http://127.0.0.1:8000/docs`
-- OpenAPI: `http://127.0.0.1:8000/openapi.json`
-
-## Inicialização do Master (primeira vez)
-
-O bootstrap automático do Master está desativado. Para criar o primeiro Master, use a rota segura `POST /api/auth/initialize-master` com o header `X-Master-Bootstrap-Token`.
-
-1) Garanta que `MASTER_BOOTSTRAP_TOKEN` está definido no `.env`.
-
-2) Faça a chamada (exemplo com `curl`):
-
-```bash
-curl -X POST "http://127.0.0.1:8000/api/auth/initialize-master" \
-	-H "Content-Type: application/json" \
-	-H "X-Master-Bootstrap-Token: dev-bootstrap-token-change-me" \
-	-d '{"login":"master","password":"masterpass","pin":"1234"}'
-```
-
-Se já existir Master, a API retornará erro informando que ele já existe.
-
-## Autenticação
-
-### Login
-
-`POST /api/auth/login`
-
-Body:
-
-```json
-{ "login": "...", "password": "...", "pin": "1234" }
-```
-
-Resposta (exemplo):
-
-```json
-{ "access_token": "...", "token_type": "bearer", "user_id": 1, "role": "player" }
-```
-
-### Usar token nos endpoints REST
-
-Inclua o header:
-
-```
-Authorization: Bearer <access_token>
-```
-
-## WebSockets (tempo real)
-
-### Como enviar o token
-
-Os WebSockets usam `Sec-WebSocket-Protocol` (subprotocol) para carregar o JWT. Em navegadores, isso é suportado passando uma lista de subprotocols:
-
-```js
-const ws = new WebSocket('ws://127.0.0.1:8000/api/chat/ws', ['bearer', token])
-```
-
-> Observação: apesar de alguns docstrings mencionarem `?token=...`, o backend extrai o token por **header/subprotocol** (não por query param).
-
-### Endpoints WebSocket
-
-- Chat (somente players): `ws://127.0.0.1:8000/api/chat/ws`
-- Updates (somente players): `ws://127.0.0.1:8000/api/updates/ws`
-- Inventário (master qualquer personagem; player apenas os próprios): `ws://127.0.0.1:8000/ws/inventory/{character_id}`
-- Notificações por usuário (somente o próprio usuário): `ws://127.0.0.1:8000/ws/user-updates/{user_id}`
-
-## Principais rotas REST (visão rápida)
-
-Base URL (dev): `http://127.0.0.1:8000`
-
-- Auth: `/api/auth/...`
-	- `POST /api/auth/initialize-master`
-	- `POST /api/auth/login`
-	- `GET /api/auth/me`
-	- `GET/POST/PUT/DELETE /api/auth/users...` (Master)
-- Chat: `/api/chat/history`, `/api/chat/active-users`
-- Updates: `/api/updates/active-users`
-- Player (exemplo): `/api/my-characters/...`
-
-Para a lista completa e atualizada, use `/docs`.
-
-## Rodando o frontend
-
-Em `frontend/`:
-
-```bash
-npm install
+# 3. Frontend (http://localhost:5173), em outro terminal
+cd frontend
+npm ci
 npm run dev
 ```
 
-Build:
+Em desenvolvimento o Vite repassa `/api`, `/ws` e `/static` para o backend, então não há configuração de URL no frontend. Os jogadores são criados pelo Mestre na aba **Contas**.
+
+## Testes e qualidade
 
 ```bash
+uv sync --extra test --extra dev
+uv run pytest                 # backend (≈200 testes)
+uv run ruff check backend scripts
+
+cd frontend
+npm run test:run              # frontend
+npm run lint
 npm run build
 ```
 
-## Testes
+O teste `backend/tests/test_route_security.py` percorre **todas** as rotas da API e falha se alguma responder sem autenticação, ou se uma rota do Mestre aceitar um jogador. Assim uma rota nova não fica aberta por esquecimento.
 
-### Frontend
+## Segurança
 
-Em `frontend/`:
+- Login com usuário, senha **e** PIN; senhas e PINs com hash (PBKDF2-SHA256); limite de tentativas por IP e login.
+- JWT assinado com `SECRET_KEY` (obrigatória). O papel do usuário é lido do banco a cada requisição: desativar ou rebaixar uma conta invalida o token na hora.
+- Todas as rotas exigem login, exceto `/api/auth/login`, `/api/auth/initialize-master` (protegida por `MASTER_BOOTSTRAP_TOKEN`) e `/health`.
+- Jogadores só acessam os próprios personagens, inventário, ficha ao vivo e as lutas em que estão.
+- Upload de retrato: só PNG, JPEG ou WebP (verificado pelo conteúdo do arquivo), com tamanho máximo e nome gerado pelo servidor.
+- CORS restrito às origens em `CORS_ORIGINS`.
 
-```bash
-npm test
+> **Bancos antigos:** versões anteriores deste repositório versionavam `rpg_system.db` com contas de teste. Se algum servidor usou esse arquivo, troque as senhas de todas as contas. O arquivo saiu do repositório, mas continua no histórico do git.
+
+## Estrutura
+
+```
+backend/
+  master/
+    core/          configuração (.env), uploads, rate limit, tarefas em segundo plano
+    controllers/   rotas HTTP e WebSocket (finas: validam, chamam serviços, notificam)
+    services/      regras de negócio
+    models/        modelos SQLAlchemy
+    schemas/       contratos de entrada e saída (Pydantic)
+    utils/         autenticação, conexões WebSocket, expiração de efeitos
+  player/          rotas e serviços exclusivos do jogador
+  tests/           pytest
+frontend/src/
+  context/         sessão (AuthContext) e notificações em tempo real
+  hooks/           useSocket (WebSocket com reconexão), inventário ao vivo
+  lib/             sessão/JWT, efeitos
+  services/api.js  cliente HTTP
+  pages/           telas do Mestre e do jogador
+  components/      componentes compartilhados
+scripts/           criação de usuários e dados de exemplo
+docs/              arquitetura e decisões
 ```
 
-### Backend
+Detalhes de arquitetura, canais em tempo real e decisões técnicas em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-Há scripts de teste e verificação na raiz (ex.: `test_chat_auto.py`, `verify_chat_history_access.py`).
+## Variáveis de ambiente
 
-Se você quiser rodar como suite pytest, instale extras e execute:
+Todas estão documentadas em [.env.example](.env.example) (backend) e [frontend/.env.example](frontend/.env.example).
 
-```powershell
-pip install -e ".[test]"
-pytest
-```
-
-## Banco de dados e migrations
-
-- O backend usa SQLite em `./rpg_system.db`.
-- O projeto inclui Alembic em `alembic/`.
-
-Se você tiver migrations presentes em `alembic/versions/`, rode:
-
-```bash
-alembic upgrade head
-```
-
-## Troubleshooting
-
-- **Erro `SECRET_KEY environment variable is required`**: defina `SECRET_KEY` no `.env` (raiz) ou exporte na sessão do terminal.
-- **Windows + `.env` com BOM**: o loader do backend lê `.env` com `utf-8-sig` para evitar problemas de BOM.
-- **API responde 404 em `/` mas está viva**: valide usando `/docs` ou `/openapi.json`.
-- **WebSocket não autentica**: use subprotocol `['bearer', token]` (não query param).
-
-## Documentação adicional no repositório
-
-- GETTING_STARTED.md
-- ARCHITECTURE.md
-- AUTHENTICATION.md
-- AUTH_ROUTES.md
-- CHAT.md
-- CHAT_TECHNICAL.md
-- SETUP_FRONTEND.md
-- TESTING.md
-- QUICK_START_TESTING.md
-- SUMMARY_TESTING.md
-- INTERFACE_TESTING.md
+| Variável | Para quê |
+| --- | --- |
+| `SECRET_KEY` | Assinatura dos tokens (obrigatória) |
+| `DATABASE_URL` | Banco (padrão: SQLite em `./rpg_system.db`) |
+| `CORS_ORIGINS` | Origens do frontend autorizadas, separadas por vírgula |
+| `MASTER_BOOTSTRAP_TOKEN` | Habilita a criação do Mestre pela API; remova depois de usar |
+| `MAX_UPLOAD_BYTES`, `LOGIN_MAX_ATTEMPTS`, `LOGIN_WINDOW_SECONDS`, `ACCESS_TOKEN_EXPIRE_MINUTES` | Limites opcionais |
