@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime
+
+from ..core.time import utcnow
 from ..database.connection import Base
 
 
@@ -16,7 +17,7 @@ class BuffDebuff(Base):
     multipliers = Column(Text, nullable=True)  # JSON string with multipliers
     attributes_affected = Column(Text, nullable=True)  # JSON string list of attribute keys
     stackable = Column(Boolean, nullable=False, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     creator = relationship("User")

@@ -1,10 +1,11 @@
 from sqlalchemy.orm import Session
+
+from ..models.country_model import Country
 from ..models.map_model import Map
 from ..models.raca_model import Raca
-from ..schemas.map_schema import MapCreate, MapUpdate
 from ..models.region_model import Region
-from ..models.country_model import Country
 from ..models.village_model import Village
+from ..schemas.map_schema import MapCreate, MapUpdate
 
 
 def get_maps(db: Session, skip: int = 0, limit: int = 100):
@@ -16,13 +17,7 @@ def get_map_by_id(db: Session, map_id: int):
 
 
 def create_map(db: Session, map_in: MapCreate):
-    db_map = Map(
-        name=map_in.name,
-        image=map_in.image,
-        description=map_in.description,
-        danger_level=map_in.danger_level,
-        map_type=map_in.map_type,
-    )
+    db_map = Map(**map_in.model_dump(exclude={"allowed_races"}))
     # Associate racas if provided
     if map_in.allowed_races:
         racas = db.query(Raca).filter(Raca.id.in_(map_in.allowed_races)).all()
@@ -102,9 +97,7 @@ def build_map_tree(db: Session):
             country_villages = []
             for village in [village for village in villages if village.country_id == country.id]:
                 village_maps = [
-                    serialize_map(map_item)
-                    for map_item in maps_by_village.get(village.id, [])
-                    if map_item.parent_map_id is None
+                    serialize_map(map_item) for map_item in maps_by_village.get(village.id, []) if map_item.parent_map_id is None
                 ]
                 country_villages.append(
                     {

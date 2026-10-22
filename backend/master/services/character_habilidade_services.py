@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
+
 from ..models.character_habilidade_model import CharacterHabilidade
-from ..models.habilidades_model import Habilidade
 from ..models.character_model import Character
+from ..models.habilidades_model import Habilidade
 from ..models.inventario_model import Inventario
 
 
@@ -22,11 +23,15 @@ def assign_skill_to_character(db: Session, character_id: int, habilidade_id: int
 
     # Item restriction: ensure character owns the item
     if habilidade.item_id is not None:
-        inv = db.query(Inventario).filter(
-            Inventario.character_id == character_id,
-            Inventario.item_id == habilidade.item_id,
-            Inventario.quantidade > 0,
-        ).first()
+        inv = (
+            db.query(Inventario)
+            .filter(
+                Inventario.character_id == character_id,
+                Inventario.item_id == habilidade.item_id,
+                Inventario.quantidade > 0,
+            )
+            .first()
+        )
         if not inv:
             return None
 
@@ -39,10 +44,14 @@ def assign_skill_to_character(db: Session, character_id: int, habilidade_id: int
 
 
 def unassign_skill(db: Session, character_id: int, habilidade_id: int):
-    assigned = db.query(CharacterHabilidade).filter(
-        CharacterHabilidade.character_id == character_id,
-        CharacterHabilidade.habilidade_id == habilidade_id,
-    ).first()
+    assigned = (
+        db.query(CharacterHabilidade)
+        .filter(
+            CharacterHabilidade.character_id == character_id,
+            CharacterHabilidade.habilidade_id == habilidade_id,
+        )
+        .first()
+    )
     if not assigned:
         return None
     db.delete(assigned)

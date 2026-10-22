@@ -1,27 +1,29 @@
-from fastapi import WebSocket
-from typing import Dict, List, Optional
 import json
 import logging
-from datetime import datetime
+
+from fastapi import WebSocket
+
+from ..core.time import utcnow
+
 
 class InventoryManager:
     """Gerencia eventos de inventário em tempo real via WebSocket"""
-    
+
     def __init__(self):
         # Mapeia character_id -> lista de WebSocket connections
-        self.inventory_subscriptions: Dict[int, List[WebSocket]] = {}
+        self.inventory_subscriptions: dict[int, list[WebSocket]] = {}
         # Mapeia user_id -> lista de WebSocket connections (para notificações gerais)
-        self.user_subscriptions: Dict[int, List[WebSocket]] = {}
+        self.user_subscriptions: dict[int, list[WebSocket]] = {}
         # Mapeia character_id -> lista de WebSocket connections para atualizações de ficha/visualização
-        self.character_view_subscriptions: Dict[int, List[WebSocket]] = {}
-    
+        self.character_view_subscriptions: dict[int, list[WebSocket]] = {}
+
     async def subscribe_to_character_inventory(self, websocket: WebSocket, character_id: int, subprotocol: str | None = None):
         """Inscreve um websocket para receber atualizações do inventário de um personagem"""
         await websocket.accept(subprotocol=subprotocol)
         if character_id not in self.inventory_subscriptions:
             self.inventory_subscriptions[character_id] = []
         self.inventory_subscriptions[character_id].append(websocket)
-    
+
     async def subscribe_to_user_updates(self, websocket: WebSocket, user_id: int, subprotocol: str | None = None):
         """Inscreve um websocket para receber notificações gerais para um usuário"""
         await websocket.accept(subprotocol=subprotocol)
@@ -29,15 +31,9 @@ class InventoryManager:
             self.user_subscriptions[user_id] = []
         self.user_subscriptions[user_id].append(websocket)
         logging.info("Subscribed websocket for user %s (total=%s)", user_id, len(self.user_subscriptions[user_id]))
-    
+
     async def broadcast_inventory_update(
-        self, 
-        character_id: int, 
-        action: str, 
-        item_id: int, 
-        item_name: str, 
-        quantity: int,
-        performed_by: int
+        self, character_id: int, action: str, item_id: int, item_name: str, quantity: int, performed_by: int
     ):
         """
         Emite notificação de atualização de inventário
@@ -45,7 +41,7 @@ class InventoryManager:
         """
         if character_id not in self.inventory_subscriptions:
             return
-        
+
         message = {
             "type": "inventory_update",
             "character_id": character_id,
@@ -54,19 +50,19 @@ class InventoryManager:
             "item_name": item_name,
             "quantity": quantity,
             "performed_by": performed_by,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": utcnow().isoformat(),
         }
-        
+
         message_json = json.dumps(message)
         disconnected_sockets = []
-        
+
         for websocket in self.inventory_subscriptions[character_id]:
             try:
                 await websocket.send_text(message_json)
             except Exception:
                 logging.exception("Failed to broadcast inventory update to character %s", character_id)
                 disconnected_sockets.append(websocket)
-        
+
         # Remove conexões quebradas
         for ws in disconnected_sockets:
             if ws in self.inventory_subscriptions[character_id]:
@@ -95,11 +91,11 @@ class InventoryManager:
             "type": "character_update",
             "character_id": character_id,
             "data": data,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utcnow().isoformat(),
         }
 
         message_json = json.dumps(message)
-        disconnected_sockets: List[WebSocket] = []
+        disconnected_sockets: list[WebSocket] = []
 
         for websocket in self.character_view_subscriptions[character_id]:
             try:
@@ -111,40 +107,36 @@ class InventoryManager:
         for ws in disconnected_sockets:
             if ws in self.character_view_subscriptions[character_id]:
                 self.character_view_subscriptions[character_id].remove(ws)
-    
-    async def broadcast_to_user(
-        self, 
-        user_id: int, 
-        notification_type: str,
-        data: dict
-    ):
+
+    async def broadcast_to_user(self, user_id: int, notification_type: str, data: dict):
         """Emite notificações gerais para um usuário"""
         if user_id not in self.user_subscriptions:
             logging.debug("No active websocket subscribers for user %s when sending %s", user_id, notification_type)
             return
-        
-        message = {
-            "type": notification_type,
-            "data": data,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
+
+        message = {"type": notification_type, "data": data, "timestamp": utcnow().isoformat()}
+
         message_json = json.dumps(message)
         disconnected_sockets = []
-        
+
         for websocket in self.user_subscriptions[user_id]:
             try:
                 await websocket.send_text(message_json)
             except Exception:
                 logging.exception("Failed to broadcast user notification to user %s", user_id)
                 disconnected_sockets.append(websocket)
-        
+
         # Remove conexões quebradas
         for ws in disconnected_sockets:
             if ws in self.user_subscriptions[user_id]:
                 self.user_subscriptions[user_id].remove(ws)
-        logging.info("Broadcasted %s to user %s (remaining connections=%s)", notification_type, user_id, len(self.user_subscriptions.get(user_id, [])))
-    
+        logging.info(
+            "Broadcasted %s to user %s (remaining connections=%s)",
+            notification_type,
+            user_id,
+            len(self.user_subscriptions.get(user_id, [])),
+        )
+
     def unsubscribe_from_character_inventory(self, websocket: WebSocket, character_id: int):
         """Remove inscrição de um websocket"""
         if character_id in self.inventory_subscriptions:
@@ -152,7 +144,7 @@ class InventoryManager:
                 self.inventory_subscriptions[character_id].remove(websocket)
             except ValueError:
                 pass
-    
+
     def unsubscribe_from_user_updates(self, websocket: WebSocket, user_id: int):
         """Remove inscrição de um websocket"""
         if user_id in self.user_subscriptions:
@@ -160,11 +152,11 @@ class InventoryManager:
                 self.user_subscriptions[user_id].remove(websocket)
             except ValueError:
                 pass
-    
+
     def get_inventory_subscribers_count(self, character_id: int) -> int:
         """Retorna número de inscritos para um inventário específico"""
         return len(self.inventory_subscriptions.get(character_id, []))
-    
+
     def get_user_subscribers_count(self, user_id: int) -> int:
         """Retorna número de inscritos para um usuário"""
         return len(self.user_subscriptions.get(user_id, []))

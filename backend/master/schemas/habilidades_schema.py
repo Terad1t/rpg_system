@@ -1,9 +1,9 @@
-from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Optional
-from enum import Enum
+from enum import StrEnum
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-class HabilidadeTipo(str, Enum):
+class HabilidadeTipo(StrEnum):
     RACE = "race"
     ITEM = "item"
     CLASS = "class"
@@ -22,13 +22,13 @@ _TIPO_SYNONYMS = {
 class HabilidadeBase(BaseModel):
     name: str = Field(..., min_length=1)
     tipo: str  # will be normalized to one of HabilidadeTipo
-    custo_vigor: Optional[int] = 0
-    custo_vida: Optional[int] = 0
-    dano_base: Optional[int] = 0
-    efeitos_atributos: Optional[str] = None
-    classe_id: Optional[int] = None
-    raca_id: Optional[int] = None
-    item_id: Optional[int] = None
+    custo_vigor: int | None = 0
+    custo_vida: int | None = 0
+    dano_base: int | None = 0
+    efeitos_atributos: str | None = None
+    classe_id: int | None = None
+    raca_id: int | None = None
+    item_id: int | None = None
 
     @field_validator("tipo")
     def normalize_tipo(cls, v):
@@ -60,20 +60,19 @@ class HabilidadeCreate(HabilidadeBase):
 class HabilidadeRead(HabilidadeBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class HabilidadeUpdate(BaseModel):
-    name: Optional[str] = None
-    tipo: Optional[str] = None
-    custo_vigor: Optional[int] = None
-    custo_vida: Optional[int] = None
-    dano_base: Optional[int] = None
-    efeitos_atributos: Optional[str] = None
-    classe_id: Optional[int] = None
-    raca_id: Optional[int] = None
-    item_id: Optional[int] = None
+    name: str | None = None
+    tipo: str | None = None
+    custo_vigor: int | None = None
+    custo_vida: int | None = None
+    dano_base: int | None = None
+    efeitos_atributos: str | None = None
+    classe_id: int | None = None
+    raca_id: int | None = None
+    item_id: int | None = None
 
     @field_validator("tipo")
     def normalize_tipo_optional(cls, v):

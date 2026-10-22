@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from ..core.uploads import is_safe_image_reference
 
 # ========== SCHEMAS DO MASTER ==========
 
@@ -8,13 +9,14 @@ _TIPOS = {"player", "npc", "boss"}
 
 class CharacterCreateByMaster(BaseModel):
     """Criação de personagem pelo Master (completo)"""
+
     name: str = Field(..., min_length=1)
-    age: Optional[int] = None
+    age: int | None = None
     tipo: str = Field(...)
     raca_id: int = Field(..., ge=1)
     classe_id: int = Field(..., ge=1)
-    user_id: Optional[int] = None
-    current_map_id: Optional[int] = None
+    user_id: int | None = None
+    current_map_id: int | None = None
 
     @field_validator("tipo")
     def normalize_tipo(cls, v):
@@ -43,19 +45,20 @@ class CharacterCreateByMaster(BaseModel):
 
 class CharacterUpdateByMaster(BaseModel):
     """Atualização pelo Master (permite alterar quase tudo)"""
-    name: Optional[str] = Field(None, min_length=1)
-    age: Optional[int] = None
-    tipo: Optional[str] = None
-    raca_id: Optional[int] = None
-    classe_id: Optional[int] = None
-    user_id: Optional[int] = None
-    current_map_id: Optional[int] = None
-    hp: Optional[int] = None
-    max_hp: Optional[int] = None
-    mana: Optional[int] = None
-    max_mana: Optional[int] = None
-    buffs: Optional[str] = None
-    debuffs: Optional[str] = None
+
+    name: str | None = Field(None, min_length=1)
+    age: int | None = None
+    tipo: str | None = None
+    raca_id: int | None = None
+    classe_id: int | None = None
+    user_id: int | None = None
+    current_map_id: int | None = None
+    hp: int | None = None
+    max_hp: int | None = None
+    mana: int | None = None
+    max_mana: int | None = None
+    buffs: str | None = None
+    debuffs: str | None = None
 
     @field_validator("tipo")
     def normalize_tipo_opt(cls, v):
@@ -80,9 +83,18 @@ class CharacterUpdateByMaster(BaseModel):
 
 class CharacterUpdateByPlayer(BaseModel):
     """Atualização pelo Player (codinome, descrição e portrait)"""
-    codename: Optional[str] = Field(None, min_length=1, max_length=50)
-    description: Optional[str] = Field(None, max_length=2000)
-    portrait: Optional[str] = Field(None, max_length=2000)
+
+    codename: str | None = Field(None, min_length=1, max_length=50)
+    description: str | None = Field(None, max_length=2000)
+    portrait: str | None = Field(None, max_length=2000)
+
+    @field_validator("portrait")
+    def validate_portrait(cls, v):
+        if v is None or v == "":
+            return v or None
+        if not is_safe_image_reference(v):
+            raise ValueError("portrait must be an http(s) URL or an uploaded image path")
+        return v
 
 
 # ========== SCHEMAS DE LEITURA ==========
@@ -91,23 +103,22 @@ class CharacterUpdateByPlayer(BaseModel):
 class CharacterRead(BaseModel):
     id: int
     name: str
-    age: Optional[int] = None
+    age: int | None = None
     tipo: str
     raca_id: int
     classe_id: int
-    codename: Optional[str] = None
-    description: Optional[str] = None
-    portrait: Optional[str] = None
-    hp: Optional[int] = None
-    max_hp: Optional[int] = None
-    mana: Optional[int] = None
-    max_mana: Optional[int] = None
-    buffs: Optional[str] = None
-    debuffs: Optional[str] = None
-    user_id: Optional[int] = None
-    current_map_id: Optional[int] = None
-    free_points: Optional[int] = None
-    total_points_distributed: Optional[int] = None
+    codename: str | None = None
+    description: str | None = None
+    portrait: str | None = None
+    hp: int | None = None
+    max_hp: int | None = None
+    mana: int | None = None
+    max_mana: int | None = None
+    buffs: str | None = None
+    debuffs: str | None = None
+    user_id: int | None = None
+    current_map_id: int | None = None
+    free_points: int | None = None
+    total_points_distributed: int | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, ForeignKey, String, DateTime
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+
+from ..core.time import utcnow
 from ..database.connection import Base
-from datetime import datetime
 
 
 class FightTurn(Base):
@@ -11,4 +12,4 @@ class FightTurn(Base):
     current_user_id = Column(Integer, nullable=True)
     current_index = Column(Integer, default=0)
     phase = Column(String, default="waiting")
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)

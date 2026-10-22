@@ -1,218 +1,126 @@
+import json
 import logging
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, status, Query, Depends
+from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
-from ..database.connection import get_db
-from ..utils.auth_utils import decode_token, get_websocket_token
-from ..utils.chat_manager import chat_manager
-from ..utils.auth_dependencies import get_current_player, CurrentUser
-from ..schemas.chat_schema import ChatMessageBroadcast, ChatHistoryResponse, ChatMessageRead
-from ..services.chat_services import create_chat_message, get_chat_history, get_recent_messages
-from ..services.auth_services import get_user_by_id
+
 from ...player.services.player_character_services import get_player_character
-import json
-from datetime import datetime
+from ..core.time import utcnow
+from ..database.connection import SessionLocal, get_db
+from ..schemas.chat_schema import ChatHistoryResponse, ChatMessageBroadcast, ChatMessageCreate, ChatMessageRead
+from ..services.chat_services import create_chat_message, get_chat_history, get_recent_messages
+from ..utils.auth_dependencies import CurrentUser, authenticate_websocket, get_current_player, websocket_subprotocol
+from ..utils.chat_manager import chat_manager
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-# ========== REST ENDPOINTS ==========
+HISTORY_ON_CONNECT = 20
+
+
+def _system_message(text: str, message_type: str = "system") -> ChatMessageBroadcast:
+    return ChatMessageBroadcast(
+        user_id=0,
+        username="System",
+        message=text,
+        created_at=utcnow().isoformat(),
+        message_type=message_type,
+    )
+
+
+# ========== REST ==========
+
 
 @router.get("/history", response_model=ChatHistoryResponse)
 def get_chat_history_endpoint(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    current_player: CurrentUser = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    _player: CurrentUser = Depends(get_current_player),
+    db: Session = Depends(get_db),
 ):
-    """
-    Obtém o histórico de mensagens do chat.
-    Apenas players autenticados podem acessar o histórico.
-    """
     messages, total = get_chat_history(db, limit=limit, offset=offset)
-    
-    message_reads = [
-        ChatMessageRead(
-            id=msg.id,
-            user_id=msg.user_id,
-            username=msg.username,
-            message=msg.message,
-            created_at=msg.created_at
-        )
-        for msg in messages
-    ]
-    
-    return ChatHistoryResponse(messages=message_reads, total=total)
+    return ChatHistoryResponse(messages=[ChatMessageRead.model_validate(msg) for msg in messages], total=total)
+
 
 @router.get("/active-users")
-def get_active_users():
-    """Retorna lista de usuários conectados ao chat em tempo real"""
-    return {
-        "active_users": chat_manager.get_active_users(),
-        "total": chat_manager.get_active_users_count()
-    }
+def get_active_users(_player: CurrentUser = Depends(get_current_player)):
+    return {"active_users": chat_manager.get_active_users(), "total": chat_manager.get_active_users_count()}
+
 
 # ========== WEBSOCKET ==========
 
-@router.websocket("/ws")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    character_id: int | None = Query(None, ge=1),
-    db: Session = Depends(get_db)
-):
-    """
-    WebSocket para chat em tempo real.
-    
-    Query params:
-    - token: JWT token de autenticação
-    
-    Apenas players podem conectar.
-    Master é bloqueado automaticamente.
-    """
-    
-    # ========== VALIDAÇÃO DE AUTENTICAÇÃO ==========
-    
-    token = get_websocket_token(websocket)
-    payload = decode_token(token) if token else None
-    
-    if payload is None:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired token")
-        return
-    
-    user_id = payload.get("user_id")
-    role = payload.get("role")
-    
-    # ========== VALIDAÇÃO DE ROLE ==========
-    
-    if role != "player":
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Only players can access chat")
-        return
-    
-    # ========== VALIDAÇÃO DE USUÁRIO ==========
-    
-    user = get_user_by_id(db, user_id)
-    
-    if not user or not user.is_active:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="User not found or inactive")
-        return
-    
-    # ========== CONEXÃO ==========
-    
-    username = user.login
 
-    if character_id is not None:
-        db_character = get_player_character(db, character_id=character_id, user_id=user_id)
-        if db_character is None:
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid character for this player")
-            return
-        username = db_character.codename or db_character.name or user.login
-    
-    await chat_manager.connect(
-        websocket,
-        user_id,
-        username,
-        subprotocol="bearer" if websocket.headers.get("sec-websocket-protocol") else None,
-    )
-    
-    # Envia histórico recente para o novo usuário
-    try:
-        recent_messages = get_recent_messages(db, limit=20)
-        for msg in recent_messages:
-            history_msg = ChatMessageBroadcast(
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, character_id: int | None = Query(None, ge=1)):
+    """Chat em tempo real dos jogadores: /api/chat/ws?token=...&character_id=...
+
+    Com `character_id`, a mensagem aparece com o codinome do personagem
+    (que precisa pertencer ao jogador). O Master não entra no chat.
+    """
+    display_name: dict[str, str] = {}
+
+    def authorize(db: Session, user: CurrentUser) -> bool:
+        if user.role != "player":
+            return False
+        display_name["value"] = user.login
+        if character_id is not None:
+            character = get_player_character(db, character_id=character_id, user_id=user.user_id)
+            if character is None:
+                return False
+            display_name["value"] = character.codename or character.name or user.login
+        return True
+
+    user = await authenticate_websocket(websocket, authorize)
+    if user is None:
+        return
+    username = display_name["value"]
+
+    await chat_manager.connect(websocket, user.user_id, username, subprotocol=websocket_subprotocol(websocket))
+    await chat_manager.broadcast(_system_message(f"{username} joined the chat", "user_joined"))
+
+    with SessionLocal() as db:
+        recent = get_recent_messages(db, limit=HISTORY_ON_CONNECT)
+    for msg in recent:
+        await websocket.send_text(
+            ChatMessageBroadcast(
                 id=msg.id,
                 user_id=msg.user_id,
                 username=msg.username,
                 message=msg.message,
-                created_at=msg.created_at.isoformat(),
-                message_type="history"
-            )
-            await chat_manager.send_to_user(user_id, history_msg)
-    except Exception:
-        logging.exception("Failed to send recent chat history to user %s", user_id)
-    
-    # ========== LOOP DE RECEBIMENTO DE MENSAGENS ==========
-    
+                created_at=msg.created_at.isoformat() if msg.created_at else None,
+                message_type="history",
+            ).model_dump_json()
+        )
+
     try:
         while True:
-            # Recebe dados do cliente
-            data = await websocket.receive_text()
-            
+            raw = await websocket.receive_text()
             try:
-                message_data = json.loads(data)
-            except json.JSONDecodeError:
-                error_msg = ChatMessageBroadcast(
-                    user_id=0,
-                    username="System",
-                    message="Invalid message format",
-                    created_at=datetime.utcnow().isoformat(),
-                    message_type="error"
+                incoming = ChatMessageCreate(message=str(json.loads(raw).get("message", "")).strip())
+            except (json.JSONDecodeError, AttributeError, ValidationError):
+                await websocket.send_text(
+                    _system_message("Message must be JSON with 1-1000 characters", "error").model_dump_json()
                 )
-                await chat_manager.send_to_user(user_id, error_msg)
                 continue
-            
-            message_content = message_data.get("message", "").strip()
-            
-            # Validação básica
-            if not message_content or len(message_content) > 1000:
-                error_msg = ChatMessageBroadcast(
-                    user_id=0,
-                    username="System",
-                    message="Message must be between 1 and 1000 characters",
-                    created_at=datetime.utcnow().isoformat(),
-                    message_type="error"
-                )
-                await chat_manager.send_to_user(user_id, error_msg)
-                continue
-            
-            # Sanitização básica (remover tags HTML)
-            message_content = message_content.replace("<", "&lt;").replace(">", "&gt;")
-            
-            # Salva no banco de dados
-            try:
-                from ..schemas.chat_schema import ChatMessageCreate
-                chat_msg_create = ChatMessageCreate(message=message_content)
-                db_message = create_chat_message(db, user_id, username, chat_msg_create)
-                
-                # Cria o objeto para broadcast
-                broadcast_msg = ChatMessageBroadcast(
-                    id=db_message.id,
-                    user_id=user_id,
+
+            # O texto é guardado como veio; o frontend (React) escapa ao exibir.
+            with SessionLocal() as db:
+                saved = create_chat_message(db, user.user_id, username, incoming)
+                broadcast = ChatMessageBroadcast(
+                    id=saved.id,
+                    user_id=user.user_id,
                     username=username,
-                    message=message_content,
-                    created_at=datetime.utcnow().isoformat(),
-                    message_type="message"
+                    message=saved.message,
+                    created_at=saved.created_at.isoformat() if saved.created_at else utcnow().isoformat(),
+                    message_type="message",
                 )
-                
-                # Broadcast para todos
-                await chat_manager.broadcast(broadcast_msg)
-                
-            except Exception:
-                logging.exception("Error saving chat message for user %s", user_id)
-                error_msg = ChatMessageBroadcast(
-                    user_id=0,
-                    username="System",
-                    message="Error saving message",
-                    created_at=datetime.utcnow().isoformat(),
-                    message_type="error"
-                )
-                await chat_manager.send_to_user(user_id, error_msg)
-    
-    # ========== DESCONEXÃO ==========
-    
+            await chat_manager.broadcast(broadcast)
     except WebSocketDisconnect:
-        chat_manager.disconnect(user_id)
-        leave_msg = ChatMessageBroadcast(
-            user_id=0,
-            username="System",
-            message=f"{username} left the chat",
-            created_at=datetime.utcnow().isoformat(),
-            message_type="system"
-        )
-        await chat_manager.broadcast(leave_msg)
-    
+        pass
     except Exception:
-        logging.exception("Unhandled chat websocket error for user %s", user_id)
-        chat_manager.disconnect(user_id)
-        try:
-            await websocket.close(code=status.WS_1011_SERVER_ERROR, reason="Internal server error")
-        except Exception:
-            logging.exception("Failed to close chat websocket for user %s", user_id)
+        logger.exception("Unhandled chat websocket error for user %s", user.user_id)
+    finally:
+        chat_manager.disconnect(websocket, user.user_id)
+        await chat_manager.broadcast(_system_message(f"{username} left the chat", "user_left"))

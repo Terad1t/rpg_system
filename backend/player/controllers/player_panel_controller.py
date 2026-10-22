@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+import json
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from ...master.database.connection import get_db
 from ...master.models.character_model import Character
-from ...master.models.raca_model import Raca
 from ...master.models.inventario_model import Inventario
 from ...master.models.item_model import Item
-from ...master.utils.auth_dependencies import get_current_player, CurrentUser, get_current_user
-from ...master.utils.inventory_manager import inventory_manager
-import json
+from ...master.models.raca_model import Raca
+from ...master.services.character_attribute_service import attribute_total
 from ...master.services.map_services import build_map_tree
+from ...master.utils.auth_dependencies import CurrentUser, get_current_player, get_current_user
+from ...master.utils.inventory_manager import inventory_manager
 
 router = APIRouter(prefix="/player-panel", tags=["player-panel"])
 
@@ -33,13 +35,7 @@ def _serialize_item(item: Item | None):
 
 
 def _serialize_character(character: Character):
-    attributes = {}
-    for attribute in getattr(character, "character_attributes_link", []) or []:
-        # CharacterAttribute model uses 'name' and 'value'
-        try:
-            attributes[attribute.name] = attribute.value
-        except Exception:
-            pass
+    attributes = {attribute.attribute_name: attribute_total(attribute) for attribute in character.character_attributes_link or []}
 
     return {
         "id": character.id,
@@ -138,12 +134,7 @@ def _serialize_character_for_view(character: Character, viewer: CurrentUser | No
 
     # Check offline
     if character.user_id:
-        try:
-            is_online = inventory_manager.get_user_subscribers_count(int(character.user_id)) > 0
-        except Exception:
-            is_online = True
-
-        if not is_online:
+        if inventory_manager.get_user_subscribers_count(int(character.user_id)) == 0:
             return {"message": "Personagem offline."}
 
     # NPC handling
@@ -194,7 +185,6 @@ def _serialize_character_for_view(character: Character, viewer: CurrentUser | No
     return result
 
 
-
 @router.get("/characters/{character_id}/view")
 def view_character(character_id: int, current_user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
     """Retorna a visão filtrada de um personagem de acordo com permissões e configurações de visibilidade"""
@@ -212,7 +202,7 @@ def view_character(character_id: int, current_user: CurrentUser = Depends(get_cu
     )
 
     if not character:
-        return {"error": "Character not found"}
+        raise HTTPException(status_code=404, detail="Character not found")
 
     return _serialize_character_for_view(character, current_user, db)
 

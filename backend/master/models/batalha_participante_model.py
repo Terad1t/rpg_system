@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, ForeignKey
+from sqlalchemy import Column, ForeignKey, Integer
 from sqlalchemy.orm import relationship
+
 from ..database.connection import Base
+
 
 class BatalhaParticipante(Base):
     __tablename__ = "batalha_participantes"

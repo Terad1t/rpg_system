@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional, List
 
-from pydantic import BaseModel, Field, field_validator
-
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 _STATUSES = {"in_progress", "finished", "paused"}
 _ACTOR_TYPES = {"player", "enemy"}
@@ -35,13 +33,12 @@ class FightEntryRead(FightEntryCreate):
     value: int | None = None
     card_id: int | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FightCreate(BaseModel):
     name: str = Field(..., min_length=1)
-    started_at: Optional[datetime] = None
+    started_at: datetime | None = None
     status: str = "in_progress"
     duration_seconds: int = 0
 
@@ -54,11 +51,11 @@ class FightCreate(BaseModel):
 
 
 class FightUpdate(BaseModel):
-    name: Optional[str] = None
-    started_at: Optional[datetime] = None
-    ended_at: Optional[datetime] = None
-    status: Optional[str] = None
-    duration_seconds: Optional[int] = Field(None, ge=0)
+    name: str | None = None
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    status: str | None = None
+    duration_seconds: int | None = Field(None, ge=0)
 
     @field_validator("status")
     def validate_status(cls, value):
@@ -74,7 +71,7 @@ class FightRead(BaseModel):
     id: int
     name: str
     started_at: datetime
-    ended_at: Optional[datetime] = None
+    ended_at: datetime | None = None
     status: str
     duration_seconds: int
     total_player_damage: int
@@ -85,7 +82,48 @@ class FightRead(BaseModel):
     enemy_damage_count: int
     player_healing_count: int
     enemy_healing_count: int
-    entries: List[FightEntryRead] = []
+    entries: list[FightEntryRead] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+_PLAYER_ACTIONS = {"attack", "heal", "defend", "skill", "ready"}
+
+
+class FightInviteRequest(BaseModel):
+    user_ids: list[int] = Field(..., min_length=1, max_length=50)
+    expires_in: int = Field(20, ge=5, le=300)
+
+
+class FightInviteAnswer(BaseModel):
+    accept: bool
+
+
+class PlayerFightAction(BaseModel):
+    action: str
+    value: int = Field(0, ge=0, le=100_000)
+    card_id: int | None = None
+    actor_character_id: int | None = None
+    target_character_id: int | None = None
+
+    @field_validator("action")
+    def validate_action(cls, value):
+        value = str(value).strip().lower()
+        if value not in _PLAYER_ACTIONS:
+            raise ValueError(f"invalid action '{value}'")
+        return value
+
+
+class FightResponses(BaseModel):
+    fight_id: int
+    accepted: list[int]
+    declined: list[int]
+    pending: list[int]
+
+
+class FightTurnRead(BaseModel):
+    fight_id: int
+    current_user_id: int | None = None
+    current_index: int | None = None
+    phase: str | None = None
+    is_my_turn: bool = False

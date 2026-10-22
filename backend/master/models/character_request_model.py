@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
+from ..core.time import utcnow
 from ..database.connection import Base
-from datetime import datetime
 
 
 class CharacterRequest(Base):
@@ -18,7 +19,7 @@ class CharacterRequest(Base):
     height = Column(Float, nullable=True)
     description = Column(String, nullable=True)
     status = Column(String, default="pending")  # pending, approved, rejected
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime, nullable=True)
 

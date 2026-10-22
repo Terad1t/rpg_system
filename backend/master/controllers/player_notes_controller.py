@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
 from ..database.connection import get_db
 from ..schemas.player_notes_schema import PlayerNoteCreate, PlayerNoteRead
 from ..services.player_notes_services import get_note_by_user, upsert_note
@@ -9,7 +10,7 @@ router = APIRouter(prefix="/notes", tags=["player-notes"])
 
 
 @router.get("/", response_model=PlayerNoteRead)
-def read_my_note(current_player = Depends(get_current_player), db: Session = Depends(get_db)):
+def read_my_note(current_player=Depends(get_current_player), db: Session = Depends(get_db)):
     user_id = int(current_player.user_id)
     note = get_note_by_user(db, user_id=user_id)
     if not note:
@@ -19,7 +20,7 @@ def read_my_note(current_player = Depends(get_current_player), db: Session = Dep
 
 
 @router.put("/", response_model=PlayerNoteRead)
-def update_my_note(payload: PlayerNoteCreate, current_player = Depends(get_current_player), db: Session = Depends(get_db)):
+def update_my_note(payload: PlayerNoteCreate, current_player=Depends(get_current_player), db: Session = Depends(get_db)):
     user_id = int(current_player.user_id)
     note = upsert_note(db, user_id=user_id, content=payload.content)
     return note

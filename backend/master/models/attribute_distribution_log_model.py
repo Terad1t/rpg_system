@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
+from ..core.time import utcnow
 from ..database.connection import Base
-from datetime import datetime
 
 
 class AttributeDistributionLog(Base):
@@ -14,7 +15,7 @@ class AttributeDistributionLog(Base):
     old_value = Column(Integer)
     new_value = Column(Integer)
     operation = Column(String, nullable=False)  # add, remove, reset
-    distributed_at = Column(DateTime, default=datetime.utcnow)
+    distributed_at = Column(DateTime, default=utcnow)
 
     character = relationship("Character")
     user = relationship("User")

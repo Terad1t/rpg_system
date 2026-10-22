@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
+from ..core.time import utcnow
 from ..database.connection import Base
-from datetime import datetime
 
 
 class InventoryLog(Base):
@@ -13,7 +14,7 @@ class InventoryLog(Base):
     action = Column(String, nullable=False)  # add, remove, update
     quantity = Column(Integer, nullable=False)
     performed_by = Column(Integer, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     character = relationship("Character")
     item = relationship("Item")

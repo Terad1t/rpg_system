@@ -1,83 +1,37 @@
 import logging
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, status, Depends
-from sqlalchemy.orm import Session
-from ..database.connection import get_db
-from ..utils.auth_utils import decode_token, get_websocket_token
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+
+from ..utils.auth_dependencies import CurrentUser, authenticate_websocket, get_current_master, websocket_subprotocol
 from ..utils.broadcast import broadcast_manager
-from ..services.auth_services import get_user_by_id
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/updates", tags=["updates"])
 
-# ========== WEBSOCKET PARA ATUALIZAÇÕES EM TEMPO REAL ==========
 
 @router.websocket("/ws")
-async def websocket_updates_endpoint(
-    websocket: WebSocket,
-    db: Session = Depends(get_db)
-):
-    """
-    WebSocket para receber atualizações em tempo real do Master.
-
-    Query params:
-    - token: JWT token de autenticação
-
-    Apenas players podem conectar para receber atualizações.
-    Master não precisa conectar (ele dispara as atualizações via API).
-    """
-
-    # ========== VALIDAÇÃO DE AUTENTICAÇÃO ==========
-
-    token = get_websocket_token(websocket)
-    payload = decode_token(token) if token else None
-
-    if payload is None:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired token")
+async def websocket_updates_endpoint(websocket: WebSocket):
+    """Atualizações do mundo (personagens, habilidades, mapas) para jogadores: /api/updates/ws?token=..."""
+    user = await authenticate_websocket(websocket, lambda _db, u: u.role == "player")
+    if user is None:
         return
 
-    user_id = payload.get("user_id")
-    role = payload.get("role")
-
-    # ========== VALIDAÇÃO DE ROLE ==========
-
-    if role != "player":
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Only players can receive real-time updates")
-        return
-
-    # ========== VALIDAÇÃO DE USUÁRIO ==========
-
-    user = get_user_by_id(db, user_id)
-
-    if not user or not user.is_active:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="User not found or inactive")
-        return
-
-    # ========== CONEXÃO ==========
-
-    username = user.login  # Usa o login como username
-
-    await broadcast_manager.connect(websocket, user_id, username)
-
+    await broadcast_manager.connect(websocket, user.user_id, user.login, subprotocol=websocket_subprotocol(websocket))
     try:
-        # Mantém a conexão aberta para receber atualizações
         while True:
-            # Recebe mensagens do cliente (se necessário, mas principalmente para keep-alive)
-            data = await websocket.receive_text()
-            # Pode processar mensagens do cliente se necessário (ex: acknowledgments)
-            # Por enquanto, apenas mantém a conexão
-
+            await websocket.receive_text()
     except WebSocketDisconnect:
-        broadcast_manager.disconnect(user_id)
+        pass
     except Exception:
-        logging.exception("Unhandled updates websocket error for user %s", user_id)
-        broadcast_manager.disconnect(user_id)
+        logger.exception("Unhandled updates websocket error for user %s", user.user_id)
+    finally:
+        broadcast_manager.disconnect(websocket, user.user_id)
 
-# ========== ENDPOINT PARA VER USUÁRIOS CONECTADOS ==========
 
 @router.get("/active-users")
-def get_active_update_users():
-    """Retorna lista de usuários conectados para receber atualizações em tempo real"""
+def get_active_update_users(_master: CurrentUser = Depends(get_current_master)):
     return {
         "active_users": broadcast_manager.get_active_users(),
-        "total": broadcast_manager.get_active_users_count()
+        "total": broadcast_manager.get_active_users_count(),
     }

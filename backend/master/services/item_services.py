@@ -1,13 +1,16 @@
 from sqlalchemy.orm import Session
+
 from ..models.item_model import Item
 from ..schemas.item_schema import ItemCreate, ItemUpdate
-from typing import List, Optional
 
-def get_items(db: Session, skip: int = 0, limit: int = 100) -> List[Item]:
+
+def get_items(db: Session, skip: int = 0, limit: int = 100) -> list[Item]:
     return db.query(Item).offset(skip).limit(limit).all()
 
-def get_item_by_id(db: Session, item_id: int) -> Optional[Item]:
+
+def get_item_by_id(db: Session, item_id: int) -> Item | None:
     return db.query(Item).filter(Item.id == item_id).first()
+
 
 def create_item(db: Session, item: ItemCreate) -> Item:
     quantity = item.quantity if item.quantity is not None else item.quantidade_maxima or 1
@@ -26,7 +29,8 @@ def create_item(db: Session, item: ItemCreate) -> Item:
     db.refresh(db_item)
     return db_item
 
-def update_item(db: Session, item_id: int, item_update: ItemUpdate) -> Optional[Item]:
+
+def update_item(db: Session, item_id: int, item_update: ItemUpdate) -> Item | None:
     db_item = db.query(Item).filter(Item.id == item_id).first()
     if db_item:
         data = item_update.model_dump(exclude_unset=True)
@@ -43,7 +47,8 @@ def update_item(db: Session, item_id: int, item_update: ItemUpdate) -> Optional[
         db.refresh(db_item)
     return db_item
 
-def delete_item(db: Session, item_id: int) -> Optional[Item]:
+
+def delete_item(db: Session, item_id: int) -> Item | None:
     db_item = db.query(Item).filter(Item.id == item_id).first()
     if db_item:
         db.delete(db_item)

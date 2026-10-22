@@ -1,218 +1,150 @@
-import os
+import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
+
+from ..core.config import get_settings
+from ..core.rate_limit import SlidingWindowLimiter
 from ..database.connection import get_db
 from ..schemas.auth_schema import (
     LoginRequest,
+    MasterInitialization,
     TokenResponse,
     UserCreateByMaster,
     UserRead,
     UserUpdateByMaster,
-    MasterInitialization
 )
-from ..services.auth_services import (
-    login,
-    create_user,
-    get_all_users,
-    get_user_by_id,
-    update_user,
-    delete_user,
-    deactivate_user,
-    get_user_by_login,
-)
-from ..utils.auth_dependencies import get_current_user, get_current_master, CurrentUser
+from ..services import auth_services
+from ..services.auth_services import UserRuleError
+from ..utils.auth_dependencies import CurrentUser, get_current_master, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+_settings = get_settings()
+login_limiter = SlidingWindowLimiter(_settings.login_max_attempts, _settings.login_window_seconds)
+
+
+def _rule_error(exc: UserRuleError) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+def _user_or_404(user):
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
+
+
 # ========== INICIALIZAÇÃO ==========
 
-@router.post("/initialize-master", response_model=UserRead)
+
+@router.post("/initialize-master", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def initialize_master(
     master_data: MasterInitialization,
     bootstrap_token: str = Header(..., alias="X-Master-Bootstrap-Token"),
     db: Session = Depends(get_db),
 ):
-    """
-    Inicializa o Master do sistema apenas com um token de bootstrap configurado em ambiente.
-    """
-    from ..services.auth_services import hash_password, hash_pin
-    from ..models.user_model import User
+    """Cria o Master inicial. Exige o header com o valor de MASTER_BOOTSTRAP_TOKEN."""
+    expected = get_settings().master_bootstrap_token
+    if not expected:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Master bootstrap is not configured")
+    if not secrets.compare_digest(bootstrap_token, expected):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid bootstrap token")
+    try:
+        return auth_services.create_master(db, master_data)
+    except UserRuleError as exc:
+        raise _rule_error(exc) from exc
 
-    expected_bootstrap_token = os.getenv("MASTER_BOOTSTRAP_TOKEN")
-
-    if not expected_bootstrap_token:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Master bootstrap is not configured"
-        )
-
-    if bootstrap_token != expected_bootstrap_token:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid bootstrap token"
-        )
-    
-    # Verifica se já existe um Master
-    existing_master = db.query(User).filter(User.role == "master").first()
-    
-    if existing_master:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Master already exists in the system"
-        )
-    
-    # Cria o novo Master
-    new_master = User(
-        login=master_data.login,
-        password_hash=hash_password(master_data.password),
-        pin_hash=hash_pin(master_data.pin),
-        role="master",
-        is_active=True,
-        created_by=None
-    )
-    
-    db.add(new_master)
-    db.commit()
-    db.refresh(new_master)
-    
-    return new_master
 
 # ========== LOGIN ==========
 
+
 @router.post("/login", response_model=TokenResponse)
-def login_endpoint(login_request: LoginRequest, db: Session = Depends(get_db)):
-    """Faz o login do usuário com login, senha e PIN"""
-    result = login(db, login_request)
-    
-    if not result:
+def login_endpoint(login_request: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    """Login com usuário, senha e PIN. Bloqueia temporariamente após várias falhas."""
+    client_ip = request.client.host if request.client else "unknown"
+    limiter_key = f"{client_ip}:{login_request.login.lower()}"
+
+    retry_after = login_limiter.retry_after(limiter_key)
+    if retry_after:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid login credentials"
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Try again later.",
+            headers={"Retry-After": str(retry_after)},
         )
-    
+
+    result = auth_services.login(db, login_request)
+    if not result:
+        login_limiter.register_failure(limiter_key)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid login credentials")
+
+    login_limiter.reset(limiter_key)
     return result
 
-# ========== GERENCIAMENTO DE USUÁRIOS (MASTER ONLY) ==========
+
+# ========== GERENCIAMENTO DE USUÁRIOS (MASTER) ==========
+
 
 @router.get("/users", response_model=list[UserRead])
 def list_users(
     skip: int = 0,
     limit: int = 100,
-    current_master: CurrentUser = Depends(get_current_master),
-    db: Session = Depends(get_db)
+    _master: CurrentUser = Depends(get_current_master),
+    db: Session = Depends(get_db),
 ):
-    """Lista todos os usuários do sistema (Master only)"""
-    users = get_all_users(db, skip=skip, limit=limit)
-    return users
+    return auth_services.get_all_users(db, skip=skip, limit=min(limit, 500))
+
 
 @router.get("/users/{user_id}", response_model=UserRead)
-def get_user(
-    user_id: int,
-    current_master: CurrentUser = Depends(get_current_master),
-    db: Session = Depends(get_db)
-):
-    """Obém um usuário específico (Master only)"""
-    user = get_user_by_id(db, user_id)
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    return user
+def get_user(user_id: int, _master: CurrentUser = Depends(get_current_master), db: Session = Depends(get_db)):
+    return _user_or_404(auth_services.get_user_by_id(db, user_id))
 
-@router.post("/users", response_model=UserRead)
+
+@router.post("/users", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_new_user(
     user_data: UserCreateByMaster,
-    current_master: CurrentUser = Depends(get_current_master),
-    db: Session = Depends(get_db)
+    master: CurrentUser = Depends(get_current_master),
+    db: Session = Depends(get_db),
 ):
-    """Cria um novo usuário (Master only)"""
-    # Verifica se o login já existe
-    existing_user = get_user_by_login(db, user_data.login)
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Login already exists"
-        )
-    
     try:
-        new_user = create_user(db, user_data, current_master.user_id)
-        return new_user
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        return auth_services.create_user(db, user_data, master.user_id)
+    except UserRuleError as exc:
+        raise _rule_error(exc) from exc
+
 
 @router.put("/users/{user_id}", response_model=UserRead)
 def update_existing_user(
     user_id: int,
     user_update: UserUpdateByMaster,
-    current_master: CurrentUser = Depends(get_current_master),
-    db: Session = Depends(get_db)
+    master: CurrentUser = Depends(get_current_master),
+    db: Session = Depends(get_db),
 ):
-    """Atualiza um usuário (Master only)"""
-    user = update_user(db, user_id, user_update)
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    return user
+    try:
+        return _user_or_404(auth_services.update_user(db, user_id, user_update, master.user_id))
+    except UserRuleError as exc:
+        raise _rule_error(exc) from exc
+
 
 @router.delete("/users/{user_id}")
-def delete_existing_user(
-    user_id: int,
-    current_master: CurrentUser = Depends(get_current_master),
-    db: Session = Depends(get_db)
-):
-    """Deleta um usuário (Master only)"""
-    user = delete_user(db, user_id)
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
+def delete_existing_user(user_id: int, master: CurrentUser = Depends(get_current_master), db: Session = Depends(get_db)):
+    try:
+        _user_or_404(auth_services.delete_user(db, user_id, master.user_id))
+    except UserRuleError as exc:
+        raise _rule_error(exc) from exc
     return {"message": "User deleted successfully"}
 
+
 @router.post("/users/{user_id}/deactivate")
-def deactivate_existing_user(
-    user_id: int,
-    current_master: CurrentUser = Depends(get_current_master),
-    db: Session = Depends(get_db)
-):
-    """Desativa um usuário sem deletá-lo (Master only)"""
-    user = deactivate_user(db, user_id)
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
+def deactivate_existing_user(user_id: int, master: CurrentUser = Depends(get_current_master), db: Session = Depends(get_db)):
+    try:
+        _user_or_404(auth_services.deactivate_user(db, user_id, master.user_id))
+    except UserRuleError as exc:
+        raise _rule_error(exc) from exc
     return {"message": "User deactivated successfully"}
 
-# ========== PERFIL DO USUÁRIO ==========
+
+# ========== PERFIL ==========
+
 
 @router.get("/me", response_model=UserRead)
-def get_current_user_profile(
-    current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Obtém o perfil do usuário autenticado"""
-    user = get_user_by_id(db, current_user.user_id)
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    return user
+def get_current_user_profile(current_user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    return _user_or_404(auth_services.get_user_by_id(db, current_user.user_id))

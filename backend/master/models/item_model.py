@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from ..database.connection import Base
+
 
 class Item(Base):
     __tablename__ = "itens"

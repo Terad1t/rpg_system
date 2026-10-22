@@ -1,36 +1,47 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class ItemCreate(BaseModel):
     name: str = Field(..., min_length=1)
     tipo: str = Field(..., min_length=1)
-    image: Optional[str] = None
-    description: Optional[str] = None
-    buffs: Optional[str] = None
-    nerfs: Optional[str] = None
-    quantity: Optional[int] = 1
-    quantidade_maxima: Optional[int] = 1
+    image: str | None = None
+    description: str | None = None
+    buffs: str | None = None
+    nerfs: str | None = None
+    quantity: int | None = Field(1, ge=0)
+    quantidade_maxima: int | None = Field(1, ge=0)
+
 
 class ItemRead(BaseModel):
     id: int
     name: str
     tipo: str
-    image: Optional[str]
-    description: Optional[str]
-    buffs: Optional[str]
-    nerfs: Optional[str]
-    quantity: int
-    quantidade_maxima: int
+    image: str | None = None
+    description: str | None = None
+    buffs: str | None = None
+    nerfs: str | None = None
+    quantity: int | None = 1
+    quantidade_maxima: int | None = 1
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class ItemUpdate(BaseModel):
-    name: Optional[str]
-    tipo: Optional[str]
-    image: Optional[str]
-    description: Optional[str]
-    buffs: Optional[str]
-    nerfs: Optional[str]
-    quantity: Optional[int]
-    quantidade_maxima: Optional[int]
+    name: str | None = Field(None, min_length=1)
+    tipo: str | None = Field(None, min_length=1)
+    image: str | None = None
+    description: str | None = None
+    buffs: str | None = None
+    nerfs: str | None = None
+    quantity: int | None = Field(None, ge=0)
+    quantidade_maxima: int | None = Field(None, ge=0)
+
+
+class InventoryEntryRead(BaseModel):
+    id: int
+    character_id: int
+    item_id: int
+    quantidade: int
+    item: ItemRead | None = None
+
+    model_config = ConfigDict(from_attributes=True)

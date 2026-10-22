@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
+from ..core.time import utcnow
 from ..database.connection import Base
-from datetime import datetime
 
 
 class MasterAudit(Base):
@@ -12,7 +13,7 @@ class MasterAudit(Base):
     character_id = Column(Integer, ForeignKey("characters.id"), nullable=False)
     action = Column(String, nullable=False)
     payload = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     master = relationship("User")
     character = relationship("Character")

@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
+from ..core.time import utcnow
 from ..database.connection import Base
-from datetime import datetime
 
 
 class FightEntry(Base):
@@ -16,6 +17,6 @@ class FightEntry(Base):
     action = Column(String, nullable=True)
     value = Column(Integer, default=0)
     card_id = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     fight = relationship("Fight", back_populates="entries")

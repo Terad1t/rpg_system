@@ -1,11 +1,10 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RegionBase(BaseModel):
     name: str = Field(..., min_length=1)
-    description: Optional[str] = None
-    climate: Optional[str] = None
+    description: str | None = None
+    climate: str | None = None
 
 
 class RegionCreate(RegionBase):
@@ -15,11 +14,10 @@ class RegionCreate(RegionBase):
 class RegionRead(RegionBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RegionUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1)
-    description: Optional[str] = None
-    climate: Optional[str] = None
+    name: str | None = Field(None, min_length=1)
+    description: str | None = None
+    climate: str | None = None

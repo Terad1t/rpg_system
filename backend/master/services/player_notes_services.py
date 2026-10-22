@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+
 from ..models.player_notes_model import PlayerNote
 
 

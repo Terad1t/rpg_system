@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
+from ..core.time import utcnow
 from ..database.connection import Base
-from datetime import datetime
+
 
 class User(Base):
     __tablename__ = "users"
@@ -13,8 +15,8 @@ class User(Base):
     role = Column(String, nullable=False)  # "master" ou "player"
     is_active = Column(Boolean, default=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     # Relacionamento
     creator = relationship("User", remote_side=[id], backref="created_users")
