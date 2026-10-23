@@ -74,7 +74,7 @@ export function ChatDock({ characterId, displayName }: { characterId: number; di
           <p className="font-display font-bold text-parchment">Chat da mesa</p>
           <StatusDot online={isConnected} label={isConnected ? `falando como ${displayName}` : 'conectando...'} />
         </div>
-        <button type="button" aria-label="Fechar chat" onClick={() => setOpen(false)} className="rounded p-1 text-parchment-muted hover:text-parchment">
+        <button type="button" aria-label="Fechar chat" onClick={() => setOpen(false)} className="rounded-sm p-1 text-parchment-muted hover:text-parchment">
           <X className="h-5 w-5" />
         </button>
       </header>
@@ -92,7 +92,7 @@ export function ChatDock({ characterId, displayName }: { characterId: number; di
           return (
             <li key={line.key} className={cn('flex flex-col', own ? 'items-end' : 'items-start')}>
               {!own && <span className="mb-0.5 text-[11px] font-semibold text-gold">{line.username}</span>}
-              <p className={cn('max-w-[85%] whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm', own ? 'bg-gold/20 text-parchment' : 'bg-surface-raised text-parchment')}>
+              <p className={cn('max-w-[85%] whitespace-pre-wrap wrap-break-word rounded-lg px-3 py-2 text-sm', own ? 'bg-gold/20 text-parchment' : 'bg-surface-raised text-parchment')}>
                 {line.message}
               </p>
               <span className="mt-0.5 text-[10px] text-parchment-faint">{formatTime(line.created_at)}</span>

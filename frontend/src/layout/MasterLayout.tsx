@@ -124,7 +124,7 @@ export function MasterLayout() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-ink/85 px-4 py-3 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-ink/85 px-4 py-3 backdrop-blur-sm sm:px-6">
           <button type="button" aria-label="Abrir menu" onClick={() => setMenuOpen(true)} className="rounded-md p-2 text-parchment-muted lg:hidden">
             <Menu className="h-5 w-5" />
           </button>

@@ -9,7 +9,7 @@ export function PlayerLayout() {
   const { user, logout } = useAuth()
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-30 border-b border-line bg-ink/85 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-line bg-ink/85 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
           <Link to="/jogador" aria-label="Início">
             <Brand subtitle="Mesa do jogador" />

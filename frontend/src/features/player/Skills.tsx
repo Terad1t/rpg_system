@@ -27,15 +27,15 @@ export function Skills({ characterId }: { characterId: number }) {
                     </div>
                     {habilidade.efeitos_atributos && <p className="mt-1 text-sm text-parchment-muted">{habilidade.efeitos_atributos}</p>}
                     <dl className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-                      <div className="rounded border border-line py-1.5">
+                      <div className="rounded-sm border border-line py-1.5">
                         <dt className="text-parchment-faint">Dano</dt>
                         <dd className="font-bold tabular-nums text-parchment">{habilidade.dano_base ?? 0}</dd>
                       </div>
-                      <div className="rounded border border-line py-1.5">
+                      <div className="rounded-sm border border-line py-1.5">
                         <dt className="text-parchment-faint">Vigor</dt>
                         <dd className="font-bold tabular-nums text-arcane">−{habilidade.custo_vigor ?? 0}</dd>
                       </div>
-                      <div className="rounded border border-line py-1.5">
+                      <div className="rounded-sm border border-line py-1.5">
                         <dt className="text-parchment-faint">Vida</dt>
                         <dd className="font-bold tabular-nums text-blood">−{habilidade.custo_vida ?? 0}</dd>
                       </div>

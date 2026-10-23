@@ -2,8 +2,8 @@ import { Heart, Sparkles } from 'lucide-react'
 import { cn } from './cn'
 
 const KINDS = {
-  hp: { label: 'Vida', bar: 'bg-gradient-to-r from-blood/80 to-blood', Icon: Heart },
-  mana: { label: 'Mana', bar: 'bg-gradient-to-r from-arcane/80 to-arcane', Icon: Sparkles },
+  hp: { label: 'Vida', bar: 'bg-linear-to-r from-blood/80 to-blood', Icon: Heart },
+  mana: { label: 'Mana', bar: 'bg-linear-to-r from-arcane/80 to-arcane', Icon: Sparkles },
 } as const
 
 export function StatBar({ kind, current, max, compact = false }: { kind: keyof typeof KINDS; current: number | null; max: number | null; compact?: boolean }) {

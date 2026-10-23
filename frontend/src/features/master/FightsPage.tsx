@@ -154,7 +154,7 @@ function EntryLog({ fight }: { fight: Fight }) {
       {entries.map((entry) => (
         <li key={entry.id} className="flex items-center gap-3 rounded-md border border-line px-3 py-2 text-sm">
           <span
-            className={cn('h-8 w-1 shrink-0 rounded-full', entry.actor_type === 'player' ? 'bg-[var(--series-players)]' : 'bg-[var(--series-enemies)]')}
+            className={cn('h-8 w-1 shrink-0 rounded-full', entry.actor_type === 'player' ? 'bg-(--series-players)' : 'bg-(--series-enemies)')}
             aria-hidden
           />
           <div className="min-w-0 flex-1">
@@ -169,7 +169,7 @@ function EntryLog({ fight }: { fight: Fight }) {
             {entry.damage > 0 && <p className="text-blood">{entry.damage} dano</p>}
             {entry.healing > 0 && <p className="text-moss">{entry.healing} cura</p>}
           </div>
-          <button type="button" aria-label="Apagar ação" onClick={() => remove.mutate(entry.id)} className="rounded p-1 text-parchment-faint hover:text-blood">
+          <button type="button" aria-label="Apagar ação" onClick={() => remove.mutate(entry.id)} className="rounded-sm p-1 text-parchment-faint hover:text-blood">
             <Trash2 className="h-4 w-4" />
           </button>
         </li>

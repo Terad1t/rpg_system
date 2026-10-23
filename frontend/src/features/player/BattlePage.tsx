@@ -138,7 +138,7 @@ export function BattlePage() {
                     {[...f.entries].reverse().map((entry) => (
                       <li key={entry.id} className="flex items-center gap-3 rounded-md border border-line px-3 py-2 text-sm">
                         <span
-                          className={cn('h-8 w-1 shrink-0 rounded-full', entry.actor_type === 'player' ? 'bg-[var(--series-players)]' : 'bg-[var(--series-enemies)]')}
+                          className={cn('h-8 w-1 shrink-0 rounded-full', entry.actor_type === 'player' ? 'bg-(--series-players)' : 'bg-(--series-enemies)')}
                           aria-hidden
                         />
                         <div className="min-w-0 flex-1">

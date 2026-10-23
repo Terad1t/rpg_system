@@ -13,7 +13,7 @@ function Places({ maps, currentId, depth = 0 }: { maps: MapNode[]; currentId: nu
         const here = place.id === currentId
         return (
           <li key={place.id}>
-            <div className={cn('flex items-center gap-2 rounded px-2 py-1 text-sm', here ? 'bg-gold/15 text-gold-bright' : 'text-parchment-muted')}>
+            <div className={cn('flex items-center gap-2 rounded-sm px-2 py-1 text-sm', here ? 'bg-gold/15 text-gold-bright' : 'text-parchment-muted')}>
               <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
               <span>{place.name}</span>
               {here && <Badge tone="gold">você está aqui</Badge>}

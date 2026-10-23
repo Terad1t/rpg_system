@@ -53,6 +53,6 @@ Ao migrar para Postgres, a recomendação é adotar Alembic com uma revisão ini
 
 ## Decisões e limites conhecidos
 
-- **Tailwind 3**: o `npm audit` ainda aponta dependências de build do Tailwind 3 (não vão para o bundle publicado). A migração para o Tailwind 4 muda o formato de configuração e fica como próximo passo.
+- **Tailwind 4**: configuração no próprio CSS (`@theme` em `frontend/src/index.css`); os tokens de cor ficam em `:root` como canais RGB para permitir opacidade (`bg-gold/20`).
 - **passlib**: mantido para não invalidar os hashes já gravados; não tem manutenção ativa. Uma troca futura deve verificar o formato `$pbkdf2-sha256$` e regravar o hash no próximo login.
 - **Rate limit em memória**: vale por processo, coerente com o modelo de um worker.

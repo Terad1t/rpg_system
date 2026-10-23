@@ -25,7 +25,7 @@ function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) 
       <p className="mb-1 font-semibold text-parchment">{label}</p>
       {payload.map((entry) => (
         <p key={entry.dataKey as string} className="flex items-center gap-2 text-parchment-muted">
-          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: entry.color }} aria-hidden />
+          <span className="h-2.5 w-2.5 rounded-xs" style={{ background: entry.color }} aria-hidden />
           {entry.name}: <span className="tabular-nums text-parchment">{formatNumber(entry.value as number)}</span>
         </p>
       ))}
@@ -56,7 +56,7 @@ function FightChart({ history }: { history: FightHistoryItem[] }) {
                 role="radio"
                 aria-checked={metric === value}
                 onClick={() => setMetric(value)}
-                className={cn('rounded px-3 py-1 text-xs font-semibold', metric === value ? 'bg-gold/20 text-gold-bright' : 'text-parchment-muted hover:text-parchment')}
+                className={cn('rounded-sm px-3 py-1 text-xs font-semibold', metric === value ? 'bg-gold/20 text-gold-bright' : 'text-parchment-muted hover:text-parchment')}
               >
                 {value === 'damage' ? 'Dano' : 'Cura'}
               </button>
@@ -95,7 +95,7 @@ function FightChart({ history }: { history: FightHistoryItem[] }) {
           <ul className="mb-3 flex gap-4 text-xs text-parchment-muted" aria-label="Legenda">
             {SERIES.map((s) => (
               <li key={s.key} className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} aria-hidden />
+                <span className="h-2.5 w-2.5 rounded-xs" style={{ background: s.color }} aria-hidden />
                 {s.label}
               </li>
             ))}

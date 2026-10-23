@@ -35,7 +35,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-4 backdrop-blur-xs"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <div
@@ -44,13 +44,13 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={cn('w-full animate-fade-in rounded-lg border border-line-strong bg-surface shadow-rune outline-none', SIZES[size])}
+        className={cn('w-full animate-fade-in rounded-lg border border-line-strong bg-surface shadow-rune outline-hidden', SIZES[size])}
       >
         <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
           <h2 id={titleId} className="text-lg font-bold text-gold-bright">
             {title}
           </h2>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="rounded p-1 text-parchment-muted hover:text-parchment">
+          <button type="button" onClick={onClose} aria-label="Fechar" className="rounded-sm p-1 text-parchment-muted hover:text-parchment">
             <X className="h-5 w-5" />
           </button>
         </div>

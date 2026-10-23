@@ -1,6 +1,6 @@
 # RPG System — Frontend
 
-React 18 + TypeScript + Vite + Tailwind, com TanStack Query para dados e WebSockets para tempo real. Tema visual "fantasia sombria" (Cinzel nos títulos, dourado sobre fundo escuro). Instruções gerais, backend e segurança no [README principal](../README.md).
+React 18 + TypeScript + Vite + Tailwind 4, com TanStack Query para dados e WebSockets para tempo real. Tema visual "fantasia sombria" (Cinzel nos títulos, dourado sobre fundo escuro). Instruções gerais, backend e segurança no [README principal](../README.md).
 
 ```bash
 npm ci

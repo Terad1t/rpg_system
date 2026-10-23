@@ -11,7 +11,7 @@ interface PanelProps extends Omit<HTMLAttributes<HTMLElement>, 'title'> {
 /** Superfície básica das telas (cartão com borda dourada discreta). */
 export function Panel({ title, eyebrow, actions, padded = true, className, children, ...props }: PanelProps) {
   return (
-    <section className={cn('rounded-lg border border-line bg-surface/90 shadow-rune backdrop-blur-sm', className)} {...props}>
+    <section className={cn('rounded-lg border border-line bg-surface/90 shadow-rune backdrop-blur-xs', className)} {...props}>
       {(title || actions || eyebrow) && (
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5">
           <div className="min-w-0">
@@ -42,9 +42,9 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 export function Divider({ label }: { label?: string }) {
   return (
     <div className="my-4 flex items-center gap-3 text-parchment-faint" role="separator">
-      <span className="h-px flex-1 bg-gradient-to-r from-transparent via-line-strong to-transparent" />
+      <span className="h-px flex-1 bg-linear-to-r from-transparent via-line-strong to-transparent" />
       {label && <span className="font-display text-xs tracking-[0.3em]">{label}</span>}
-      <span className="h-px flex-1 bg-gradient-to-r from-transparent via-line-strong to-transparent" />
+      <span className="h-px flex-1 bg-linear-to-r from-transparent via-line-strong to-transparent" />
     </div>
   )
 }
