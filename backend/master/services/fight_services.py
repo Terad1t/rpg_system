@@ -261,10 +261,12 @@ def close_invite_window(db: Session, fight_id: int) -> dict:
 
 
 def invite_summary(db: Session, fight_id: int) -> dict:
-    invites = db.query(FightInvite).filter(FightInvite.fight_id == fight_id).all()
-    by_status = {"accepted": [], "declined": [], "pending": []}
-    for invite in invites:
-        by_status.setdefault(invite.status, []).append(invite.user_id)
+    """Status de cada jogador convidado. Com convites repetidos (bancos antigos), vale o mais recente."""
+    invites = db.query(FightInvite).filter(FightInvite.fight_id == fight_id).order_by(FightInvite.id.asc()).all()
+    latest = {invite.user_id: invite.status for invite in invites}
+    by_status: dict[str, list[int]] = {"accepted": [], "declined": [], "pending": []}
+    for user_id, invite_status in latest.items():
+        by_status.setdefault(invite_status, []).append(user_id)
     return {"fight_id": fight_id, **{key: by_status[key] for key in ("accepted", "declined", "pending")}}
 
 
@@ -276,7 +278,7 @@ def participant_ids(db: Session, fight_id: int) -> list[int]:
         .order_by(FightInvite.id.asc())
         .all()
     )
-    return [invite.user_id for invite in invites]
+    return list(dict.fromkeys(invite.user_id for invite in invites))
 
 
 def is_participant(db: Session, fight_id: int, user_id: int) -> bool:

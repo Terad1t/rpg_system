@@ -14,14 +14,11 @@ def get_character_by_id(db: Session, character_id: int):
 
 def create_character(db: Session, character: CharacterCreateByMaster):
     db_character = Character(**character.model_dump())
-    if db_character.hp is None:
-        db_character.hp = 0
-    if db_character.max_hp is None:
-        db_character.max_hp = 0
-    if db_character.mana is None:
-        db_character.mana = 0
-    if db_character.max_mana is None:
-        db_character.max_mana = 0
+    # Personagem novo começa com vida e mana cheias.
+    db_character.max_hp = db_character.max_hp or 0
+    db_character.max_mana = db_character.max_mana or 0
+    db_character.hp = db_character.max_hp
+    db_character.mana = db_character.max_mana
     db.add(db_character)
     db.commit()
     db.refresh(db_character)

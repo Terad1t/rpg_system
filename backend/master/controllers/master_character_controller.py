@@ -53,6 +53,13 @@ def _character_summary(character: Character):
     return {
         "id": character.id,
         "name": character.name,
+        "age": character.age,
+        "subclass": character.subclass,
+        "raca_id": character.raca_id,
+        "classe_id": character.classe_id,
+        "user_id": character.user_id,
+        "current_map_id": character.current_map_id,
+        "free_points": character.free_points or 0,
         "codename": character.codename,
         "description": character.description,
         "portrait": character.portrait,

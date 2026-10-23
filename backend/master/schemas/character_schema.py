@@ -4,7 +4,7 @@ from ..core.uploads import is_safe_image_reference
 
 # ========== SCHEMAS DO MASTER ==========
 
-_TIPOS = {"player", "npc", "boss"}
+_TIPOS = {"player", "npc", "boss", "dead"}
 
 
 class CharacterCreateByMaster(BaseModel):
@@ -53,6 +53,9 @@ class CharacterUpdateByMaster(BaseModel):
     classe_id: int | None = None
     user_id: int | None = None
     current_map_id: int | None = None
+    codename: str | None = Field(None, max_length=50)
+    description: str | None = Field(None, max_length=2000)
+    subclass: str | None = Field(None, max_length=100)
     hp: int | None = None
     max_hp: int | None = None
     mana: int | None = None
@@ -108,6 +111,7 @@ class CharacterRead(BaseModel):
     raca_id: int
     classe_id: int
     codename: str | None = None
+    subclass: str | None = None
     description: str | None = None
     portrait: str | None = None
     hp: int | None = None
