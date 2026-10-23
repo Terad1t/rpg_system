@@ -2,18 +2,15 @@ import js from '@eslint/js'
 import react from 'eslint-plugin-react'
 import reactHooks from 'eslint-plugin-react-hooks'
 import globals from 'globals'
+import tseslint from 'typescript-eslint'
 
-export default [
+export default tseslint.config(
   { ignores: ['dist', 'coverage'] },
   js.configs.recommended,
+  ...tseslint.configs.recommended,
   {
-    files: ['**/*.{js,jsx}'],
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-      globals: { ...globals.browser },
-      parserOptions: { ecmaFeatures: { jsx: true } },
-    },
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: { globals: { ...globals.browser } },
     settings: { react: { version: 'detect' } },
     plugins: { react, 'react-hooks': reactHooks },
     rules: {
@@ -21,15 +18,11 @@ export default [
       ...react.configs['jsx-runtime'].rules,
       ...reactHooks.configs.recommended.rules,
       'react/prop-types': 'off',
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
   {
-    files: ['**/*.test.{js,jsx}', 'src/test/**'],
-    languageOptions: { globals: { ...globals.browser, ...globals.node, ...globals.vitest } },
-  },
-  {
-    files: ['*.config.js'],
+    files: ['*.config.{js,ts}'],
     languageOptions: { globals: { ...globals.node } },
   },
-]
+)

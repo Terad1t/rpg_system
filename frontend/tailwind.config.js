@@ -1,33 +1,34 @@
+/** Tema "fantasia sombria": as cores vêm das variáveis CSS em src/index.css. */
+const token = (name) => `rgb(var(--${name}) / <alpha-value>)`
+
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        primary: {
-          orange: '#ff8c00',
-          'orange-dark': '#ff7700',
-        },
-        dark: {
-          // Slightly softened dark palette for better contrast
-          bg: '#071025',
-          'bg-secondary': '#0f1724',
-          border: '#24303a',
-        }
+        ink: token('ink'),
+        surface: { DEFAULT: token('surface'), raised: token('surface-raised'), sunken: token('surface-sunken') },
+        line: { DEFAULT: token('line'), strong: token('line-strong') },
+        parchment: { DEFAULT: token('text'), muted: token('text-muted'), faint: token('text-faint') },
+        gold: { DEFAULT: token('gold'), bright: token('gold-bright'), deep: token('gold-deep') },
+        blood: token('blood'),
+        arcane: token('arcane'),
+        moss: token('moss'),
+        amber: token('amber'),
       },
-      backgroundColor: {
-        'dark': '#071025',
-        'dark-secondary': '#0f1724',
+      fontFamily: {
+        display: ['Cinzel', 'Georgia', 'serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       },
-      borderColor: {
-        'dark': '#24303a',
+      boxShadow: {
+        rune: '0 0 0 1px rgb(var(--gold) / 0.35), 0 8px 30px -12px rgb(0 0 0 / 0.8)',
+        glow: '0 0 24px -6px rgb(var(--gold) / 0.45)',
       },
-      textColor: {
-        'secondary': '#9AA6B2',
-      }
+      keyframes: {
+        'fade-in': { from: { opacity: '0', transform: 'translateY(4px)' }, to: { opacity: '1', transform: 'none' } },
+      },
+      animation: { 'fade-in': 'fade-in 180ms ease-out' },
     },
   },
   plugins: [],

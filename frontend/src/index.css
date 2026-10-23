@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Tema "fantasia sombria". Valores em canais RGB para o Tailwind aplicar opacidade
+ * (ex.: bg-gold/20). O app é só escuro, então os tokens ficam em :root.
+ */
+:root {
+  color-scheme: dark;
+  --ink: 17 14 11;
+  --surface: 28 24 19;
+  --surface-raised: 37 31 25;
+  --surface-sunken: 22 18 14;
+  --line: 58 48 39;
+  --line-strong: 92 76 58;
+  --text: 242 233 220;
+  --text-muted: 194 181 163;
+  --text-faint: 150 136 118;
+  --gold: 212 162 76;
+  --gold-bright: 232 189 106;
+  --gold-deep: 150 108 42;
+  --blood: 214 84 70;
+  --arcane: 77 143 217;
+  --moss: 106 170 116;
+  --amber: 217 160 58;
+
+  /* Séries dos gráficos, validadas contra --surface (CVD e contraste). */
+  --series-players: #3987e5;
+  --series-enemies: #d95926;
+}
+
+@layer base {
+  html {
+    background: rgb(var(--ink));
+  }
+
+  body {
+    @apply min-h-screen font-sans text-parchment antialiased;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgb(var(--gold) / 0.08), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgb(var(--blood) / 0.06), transparent 60%),
+      rgb(var(--ink));
+  }
+
+  h1, h2, h3 {
+    @apply font-display tracking-wide;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--gold-bright));
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: rgb(var(--gold) / 0.35);
+  }
+
+  * {
+    scrollbar-color: rgb(var(--line-strong)) transparent;
+  }
+}
+
+@layer components {
+  .field-control {
+    @apply w-full rounded-md border border-line bg-surface-sunken px-3 py-2 text-sm text-parchment placeholder:text-parchment-faint
+      transition-colors focus:border-gold focus:outline-none disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.25em] text-gold;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -2,7 +2,7 @@
 
 Plataforma web para mesas de RPG: o **Mestre** cadastra o mundo (raças, classes, itens, habilidades, buffs), aprova personagens e conduz lutas por turno; os **jogadores** acompanham a ficha, o inventário e o mapa, conversam no chat e agem nas lutas, tudo em tempo real.
 
-**Stack:** FastAPI · SQLAlchemy 2 · Pydantic 2 · WebSockets · React 18 · Vite · Tailwind · Vitest · Pytest
+**Stack:** FastAPI · SQLAlchemy 2 · Pydantic 2 · WebSockets · React 18 · TypeScript · TanStack Query · Vite · Tailwind · Vitest · Pytest
 
 ## Funcionalidades
 
@@ -10,10 +10,10 @@ Plataforma web para mesas de RPG: o **Mestre** cadastra o mundo (raças, classes
 | --- | --- |
 | Cria as contas dos jogadores (login, senha e PIN) | Pede a criação de personagens (até 3) |
 | Aprova ou recusa personagens e define os atributos iniciais | Edita codinome, descrição e retrato |
-| Cadastra raças, classes, itens, habilidades e buffs/debuffs | Vê ficha, atributos, efeitos ativos, inventário e habilidades |
+| Cadastra raças, classes, itens, habilidades, buffs/debuffs e o mapa do mundo | Vê ficha, efeitos ativos, inventário, habilidades e o mapa |
 | Aplica dano, cura e efeitos temporários na ficha | Recebe convites de luta e age na sua vez |
 | Convida jogadores para lutas e controla os turnos | Conversa no chat global usando o codinome |
-| Painel com estatísticas de dano e cura por sessão | Atualizações ao vivo, sem recarregar a página |
+| Painel com estatísticas de dano e cura por luta | Distribui pontos de atributo e guarda anotações pessoais |
 
 ## Como rodar localmente
 
@@ -47,8 +47,7 @@ uv run pytest                 # backend (≈200 testes)
 uv run ruff check backend scripts
 
 cd frontend
-npm run test:run              # frontend
-npm run lint
+npm run typecheck && npm run lint && npm run test:run
 npm run build
 ```
 
@@ -79,12 +78,10 @@ backend/
   player/          rotas e serviços exclusivos do jogador
   tests/           pytest
 frontend/src/
-  context/         sessão (AuthContext) e notificações em tempo real
-  hooks/           useSocket (WebSocket com reconexão), inventário ao vivo
-  lib/             sessão/JWT, efeitos
-  services/api.js  cliente HTTP
-  pages/           telas do Mestre e do jogador
-  components/      componentes compartilhados
+  api/             tipos da API, cliente HTTP e hooks de dados (React Query)
+  auth/, realtime/ sessão e conexões em tempo real
+  features/        telas do Mestre e do jogador
+  ui/              componentes visuais do tema
 scripts/           criação de usuários e dados de exemplo
 docs/              arquitetura e decisões
 ```

@@ -34,7 +34,7 @@ O backend é um único processo FastAPI. Em desenvolvimento o Vite faz proxy de 
 | `/api/chat/ws` | jogadores | chat global (histórico recente ao conectar) |
 | `/api/updates/ws` | jogadores | mudanças no mundo (personagens, habilidades, mapas) |
 
-O token vai em `?token=` (ou no subprotocolo `bearer, <token>`). No frontend, `useSocket` reconecta com backoff exponencial e o `NotificationsProvider` mantém **uma** conexão de notificações por sessão; as telas assinam tipos de evento com `useNotificationEvent`, o que evita perder eventos que chegam juntos.
+O token vai em `?token=` (ou no subprotocolo `bearer, <token>`). No frontend, `useSocket` reconecta com backoff exponencial e o `NotificationsProvider` mantém **uma** conexão de notificações por sessão. Cada tipo de evento invalida as consultas do React Query que ele afeta (ex.: `fight_event` recarrega a luta), então as telas se atualizam sozinhas; quem precisa reagir de outro jeito (abrir o convite, ir para o combate) assina com `useNotificationEvent`. O Mestre não recebe os eventos de ação das lutas em que não participa, então a tela de luta dele consulta a API a cada 4 s enquanto a luta está em andamento.
 
 Os hubs ficam em memória, então a API deve rodar com **um worker**. Para escalar horizontalmente, troque `utils/broadcast.py`, `utils/chat_manager.py` e `utils/inventory_manager.py` por um backend Pub/Sub (ex.: Redis); a interface usada pelos controllers não muda.
 
