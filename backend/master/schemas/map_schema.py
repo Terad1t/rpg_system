@@ -1,6 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional
-
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 _DANGER_LEVELS = {"none", "medium", "high", "spiritual", "ascendant"}
 _MAP_TYPES = {"residence", "shop", "village", "country", "region"}
@@ -8,15 +6,15 @@ _MAP_TYPES = {"residence", "shop", "village", "country", "region"}
 
 class MapBase(BaseModel):
     name: str = Field(..., min_length=1)
-    image: Optional[str] = None
-    description: Optional[str] = None
-    allowed_races: Optional[List[int]] = []
-    danger_level: Optional[str] = "none"
-    map_type: Optional[str] = "region"
-    region_id: Optional[int] = None
-    country_id: Optional[int] = None
-    village_id: Optional[int] = None
-    parent_map_id: Optional[int] = None
+    image: str | None = None
+    description: str | None = None
+    allowed_races: list[int] | None = []
+    danger_level: str | None = "none"
+    map_type: str | None = "region"
+    region_id: int | None = None
+    country_id: int | None = None
+    village_id: int | None = None
+    parent_map_id: int | None = None
 
     @field_validator("danger_level")
     def validate_danger_level(cls, v):
@@ -44,21 +42,20 @@ class MapCreate(MapBase):
 class MapRead(MapBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MapUpdate(BaseModel):
-    name: Optional[str] = None
-    image: Optional[str] = None
-    description: Optional[str] = None
-    allowed_races: Optional[List[int]] = None
-    danger_level: Optional[str] = None
-    map_type: Optional[str] = None
-    region_id: Optional[int] = None
-    country_id: Optional[int] = None
-    village_id: Optional[int] = None
-    parent_map_id: Optional[int] = None
+    name: str | None = None
+    image: str | None = None
+    description: str | None = None
+    allowed_races: list[int] | None = None
+    danger_level: str | None = None
+    map_type: str | None = None
+    region_id: int | None = None
+    country_id: int | None = None
+    village_id: int | None = None
+    parent_map_id: int | None = None
 
     @field_validator("danger_level")
     def validate_danger_level_opt(cls, v):

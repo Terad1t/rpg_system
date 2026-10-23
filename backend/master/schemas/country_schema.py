@@ -1,12 +1,11 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CountryBase(BaseModel):
     region_id: int = Field(..., ge=1)
     name: str = Field(..., min_length=1)
-    description: Optional[str] = None
-    image: Optional[str] = None
+    description: str | None = None
+    image: str | None = None
 
 
 class CountryCreate(CountryBase):
@@ -16,12 +15,11 @@ class CountryCreate(CountryBase):
 class CountryRead(CountryBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CountryUpdate(BaseModel):
-    region_id: Optional[int] = Field(None, ge=1)
-    name: Optional[str] = Field(None, min_length=1)
-    description: Optional[str] = None
-    image: Optional[str] = None
+    region_id: int | None = Field(None, ge=1)
+    name: str | None = Field(None, min_length=1)
+    description: str | None = None
+    image: str | None = None

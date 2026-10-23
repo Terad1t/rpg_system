@@ -1,145 +1,153 @@
 from sqlalchemy.orm import Session
+
 from ..models.user_model import User
-from ..schemas.auth_schema import UserCreateByMaster, UserUpdateByMaster, LoginRequest
-from ..utils.auth_utils import (
-    hash_password,
-    hash_pin,
-    verify_password,
-    verify_pin,
-    create_access_token
-)
+from ..schemas.auth_schema import LoginRequest, MasterInitialization, UserCreateByMaster, UserUpdateByMaster
+from ..utils.auth_utils import create_access_token, hash_password, hash_pin, verify_password, verify_pin
 
-# ========== INICIALIZAÇÃO ==========
 
-def initialize_master_if_not_exists(db: Session) -> User:
-    """Retorna o Master existente; bootstrap automático foi desativado."""
-    existing_master = db.query(User).filter(User.role == "master").first()
-    
-    if existing_master:
-        return existing_master
+class UserRuleError(ValueError):
+    """Regra de negócio de usuários violada (mensagem segura para o cliente)."""
 
-    raise RuntimeError("Master bootstrap is disabled; use the secure initialization route")
+
+# Hash fixo usado quando o login não existe, para que a resposta leve o mesmo
+# tempo de um login existente com senha errada (evita descobrir logins válidos).
+_DUMMY_HASH = hash_password("dummy-password-for-timing")
+
 
 # ========== AUTENTICAÇÃO ==========
 
+
 def authenticate_user(db: Session, login_request: LoginRequest) -> User | None:
-    """Autentica um usuário verificando login, senha e PIN"""
-    user = db.query(User).filter(User.login == login_request.login).first()
-    
-    if not user or not user.is_active:
+    """Confere login, senha e PIN. Devolve None em qualquer falha."""
+    user = get_user_by_login(db, login_request.login)
+    if not user:
+        verify_password(login_request.password, _DUMMY_HASH)
         return None
-    
-    # Verifica senha
-    if not verify_password(login_request.password, user.password_hash):
+
+    password_ok = verify_password(login_request.password, user.password_hash)
+    pin_ok = verify_pin(login_request.pin, user.pin_hash)
+    if not (password_ok and pin_ok and user.is_active):
         return None
-    
-    # Verifica PIN
-    if not verify_pin(login_request.pin, user.pin_hash):
-        return None
-    
     return user
 
+
 def login(db: Session, login_request: LoginRequest) -> dict | None:
-    """Faz o login do usuário e retorna o token JWT"""
     user = authenticate_user(db, login_request)
-    
     if not user:
         return None
-    
-    access_token = create_access_token(user_id=user.id, role=user.role)
-    
     return {
-        "access_token": access_token,
+        "access_token": create_access_token(user_id=user.id, role=user.role),
         "token_type": "bearer",
         "user_id": user.id,
-        "role": user.role
+        "role": user.role,
+        "login": user.login,
     }
 
-# ========== GERENCIAMENTO DE USUÁRIOS (MASTER ONLY) ==========
+
+# ========== CONSULTAS ==========
+
 
 def get_user_by_id(db: Session, user_id: int) -> User | None:
-    return db.query(User).filter(User.id == user_id).first()
+    return db.get(User, user_id)
+
 
 def get_user_by_login(db: Session, login: str) -> User | None:
     return db.query(User).filter(User.login == login).first()
 
+
 def get_all_users(db: Session, skip: int = 0, limit: int = 100) -> list[User]:
-    return db.query(User).offset(skip).limit(limit).all()
+    return db.query(User).order_by(User.id.asc()).offset(skip).limit(limit).all()
+
 
 def count_masters(db: Session) -> int:
-    """Conta quantos Masters existem no sistema"""
     return db.query(User).filter(User.role == "master").count()
 
+
+# ========== ESCRITA ==========
+
+
+def create_master(db: Session, data: MasterInitialization) -> User:
+    if count_masters(db) > 0:
+        raise UserRuleError("Master already exists in the system")
+    if get_user_by_login(db, data.login):
+        raise UserRuleError("Login already exists")
+
+    master = User(
+        login=data.login,
+        password_hash=hash_password(data.password),
+        pin_hash=hash_pin(data.pin),
+        role="master",
+        is_active=True,
+        created_by=None,
+    )
+    db.add(master)
+    db.commit()
+    db.refresh(master)
+    return master
+
+
 def create_user(db: Session, user_data: UserCreateByMaster, created_by_id: int) -> User:
-    """Cria um novo usuário (deve ser chamado apenas pelo Master)"""
-    # Impede criação de mais de um Master
+    if get_user_by_login(db, user_data.login):
+        raise UserRuleError("Login already exists")
     if user_data.role == "master" and count_masters(db) > 0:
-        raise ValueError("Only one Master user is allowed in the system")
-    
+        raise UserRuleError("Only one Master user is allowed in the system")
+
     new_user = User(
         login=user_data.login,
         password_hash=hash_password(user_data.password),
         pin_hash=hash_pin(user_data.pin),
         role=user_data.role,
         is_active=user_data.is_active,
-        created_by=created_by_id
+        created_by=created_by_id,
     )
-    
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    
     return new_user
 
-def update_user(db: Session, user_id: int, user_update: UserUpdateByMaster) -> User | None:
-    """Atualiza dados de um usuário (Master only)"""
+
+def update_user(db: Session, user_id: int, user_update: UserUpdateByMaster, acting_user_id: int) -> User | None:
     user = get_user_by_id(db, user_id)
-    
     if not user:
         return None
-    
-    # Impede mudança de role de master se já existir outro master
+
     if user_update.role == "master" and user.role != "master" and count_masters(db) > 0:
-        raise ValueError("Only one Master user is allowed in the system")
-    
+        raise UserRuleError("Only one Master user is allowed in the system")
+    if user.id == acting_user_id and (user_update.is_active is False or user_update.role == "player"):
+        raise UserRuleError("You cannot deactivate or demote your own account")
+
     if user_update.password:
         user.password_hash = hash_password(user_update.password)
-    
     if user_update.pin:
         user.pin_hash = hash_pin(user_update.pin)
-    
     if user_update.is_active is not None:
         user.is_active = user_update.is_active
-    
     if user_update.role:
         user.role = user_update.role
-    
+
     db.commit()
     db.refresh(user)
-    
     return user
 
-def delete_user(db: Session, user_id: int) -> User | None:
-    """Deleta um usuário (Master only)"""
+
+def delete_user(db: Session, user_id: int, acting_user_id: int) -> User | None:
     user = get_user_by_id(db, user_id)
-    
     if not user:
         return None
-    
+    if user.id == acting_user_id:
+        raise UserRuleError("You cannot delete your own account")
     db.delete(user)
     db.commit()
-    
     return user
 
-def deactivate_user(db: Session, user_id: int) -> User | None:
-    """Desativa um usuário em vez de deletá-lo (Master only)"""
+
+def deactivate_user(db: Session, user_id: int, acting_user_id: int) -> User | None:
     user = get_user_by_id(db, user_id)
-    
     if not user:
         return None
-    
+    if user.id == acting_user_id:
+        raise UserRuleError("You cannot deactivate your own account")
     user.is_active = False
     db.commit()
     db.refresh(user)
-    
     return user

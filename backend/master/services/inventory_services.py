@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+
 from ..models.inventario_model import Inventario
 from ..models.inventory_log_model import InventoryLog
 
@@ -11,10 +12,14 @@ def add_item_to_inventory(db: Session, character_id: int, item_id: int, quantity
     if quantity <= 0:
         raise ValueError("quantity must be > 0")
     # Upsert inventario
-    inv = db.query(Inventario).filter(
-        Inventario.character_id == character_id,
-        Inventario.item_id == item_id,
-    ).first()
+    inv = (
+        db.query(Inventario)
+        .filter(
+            Inventario.character_id == character_id,
+            Inventario.item_id == item_id,
+        )
+        .first()
+    )
 
     if inv:
         inv.quantidade += quantity
@@ -32,10 +37,14 @@ def add_item_to_inventory(db: Session, character_id: int, item_id: int, quantity
 
 
 def remove_item_from_inventory(db: Session, character_id: int, item_id: int, quantity: int, performed_by: int):
-    inv = db.query(Inventario).filter(
-        Inventario.character_id == character_id,
-        Inventario.item_id == item_id,
-    ).first()
+    inv = (
+        db.query(Inventario)
+        .filter(
+            Inventario.character_id == character_id,
+            Inventario.item_id == item_id,
+        )
+        .first()
+    )
 
     if not inv:
         return None
@@ -63,10 +72,14 @@ def remove_item_from_inventory(db: Session, character_id: int, item_id: int, qua
 def set_item_quantity(db: Session, character_id: int, item_id: int, quantity: int, performed_by: int):
     if quantity < 0:
         raise ValueError("quantity must be >= 0")
-    inv = db.query(Inventario).filter(
-        Inventario.character_id == character_id,
-        Inventario.item_id == item_id,
-    ).first()
+    inv = (
+        db.query(Inventario)
+        .filter(
+            Inventario.character_id == character_id,
+            Inventario.item_id == item_id,
+        )
+        .first()
+    )
 
     if not inv:
         inv = Inventario(character_id=character_id, item_id=item_id, quantidade=quantity)

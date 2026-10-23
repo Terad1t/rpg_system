@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
+from ..core.time import utcnow
 from ..database.connection import Base
-from datetime import datetime
 
 
 class CharacterAttribute(Base):
@@ -14,7 +15,7 @@ class CharacterAttribute(Base):
     distributed_points = Column(Integer, nullable=False, default=0)
     equipment_bonus = Column(Integer, nullable=False, default=0)
     buff_multiplier = Column(Float, nullable=False, default=1.0)
-    calculated_at = Column(DateTime, default=datetime.utcnow)
+    calculated_at = Column(DateTime, default=utcnow)
 
     # Match the relationship name used in Character.character_attributes_link
     character = relationship("Character", back_populates="character_attributes_link")

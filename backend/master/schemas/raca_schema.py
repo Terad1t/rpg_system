@@ -1,21 +1,22 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class RacaCreate(BaseModel):
     name: str = Field(..., min_length=1)
-    description: Optional[str] = None
-    image: Optional[str] = None
+    description: str | None = None
+    image: str | None = None
+
 
 class RacaUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    image: Optional[str] = None
+    name: str | None = Field(None, min_length=1)
+    description: str | None = None
+    image: str | None = None
+
 
 class RacaRead(BaseModel):
     id: int
     name: str
-    description: Optional[str] = None
-    image: Optional[str] = None
+    description: str | None = None
+    image: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

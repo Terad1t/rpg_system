@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from ..database.connection import Base
+
 
 class Character(Base):
     __tablename__ = "characters"
@@ -13,7 +15,7 @@ class Character(Base):
     raca_id = Column(Integer, ForeignKey("racas.id"), nullable=False)
     classe_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
     subclass = Column(String, nullable=True)  # Subclasse definida pelo Master
-    
+
     # Dados editáveis pelo player (se for player)
     codename = Column(String)  # Codinome do personagem (editável)
     description = Column(String)  # Descrição/lore do personagem (editável)
@@ -26,9 +28,9 @@ class Character(Base):
     debuffs = Column(String, nullable=True)
     free_points = Column(Integer, default=0)
     total_points_distributed = Column(Integer, default=0)
-    # JSON string com controle de visibilidade definido pelo mestre. Ex: '{"show_hp": false, "public_fields": ["codename","race"]}'
+    # JSON com a visibilidade definida pelo mestre, ex.: {"show_hp": false, "public_fields": ["codename"]}
     visibility = Column(String, nullable=True)
-    
+
     # Relacionamento com usuário (opcional, para players)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     current_map_id = Column(Integer, ForeignKey("maps.id"), nullable=True)

@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime
+from sqlalchemy import Column, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import relationship
+
+from ..core.time import utcnow
 from ..database.connection import Base
-from datetime import datetime
 
 
 class CharacterHabilidade(Base):
@@ -11,7 +12,7 @@ class CharacterHabilidade(Base):
     character_id = Column(Integer, ForeignKey("characters.id"), nullable=False)
     habilidade_id = Column(Integer, ForeignKey("habilidades.id"), nullable=False)
     assigned_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     # Relationships
     character = relationship("Character", back_populates="habilidades_assigned")

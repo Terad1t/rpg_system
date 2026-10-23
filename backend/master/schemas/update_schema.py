@@ -1,15 +1,25 @@
-from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Any, Dict, Optional
-from datetime import datetime
+from typing import Any
 
-_ALLOWED_EVENT_TYPES = {"character_updated", "attributes_updated", "inventory_updated", "item_updated", "skill_updated"}
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from ..core.time import utcnow
+
+_ALLOWED_EVENT_TYPES = {
+    "character_updated",
+    "attributes_updated",
+    "inventory_updated",
+    "item_updated",
+    "skill_updated",
+    "map_updated",
+}
 
 
 class UpdateEvent(BaseModel):
     """Evento de atualização em tempo real"""
+
     type: str = Field(...)
-    data: Dict[str, Any]
-    timestamp: Optional[str] = None
+    data: dict[str, Any]
+    timestamp: str | None = None
 
     @field_validator("type")
     def validate_type(cls, v):
@@ -21,7 +31,7 @@ class UpdateEvent(BaseModel):
     @model_validator(mode="after")
     def ensure_timestamp(self):
         if self.timestamp is None:
-            self.timestamp = datetime.utcnow()
+            self.timestamp = utcnow().isoformat()
         return self
 
 
@@ -44,3 +54,7 @@ class ItemUpdateEvent(UpdateEvent):
 
 class SkillUpdateEvent(UpdateEvent):
     type: str = "skill_updated"
+
+
+class MapUpdateEvent(UpdateEvent):
+    type: str = "map_updated"

@@ -1,27 +1,29 @@
 from sqlalchemy.orm import Session
+
 from ..models.character_model import Character
 from ..schemas.character_schema import CharacterCreateByMaster, CharacterUpdateByMaster
+
 
 def get_characters(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Character).offset(skip).limit(limit).all()
 
+
 def get_character_by_id(db: Session, character_id: int):
     return db.query(Character).filter(Character.id == character_id).first()
 
+
 def create_character(db: Session, character: CharacterCreateByMaster):
     db_character = Character(**character.model_dump())
-    if db_character.hp is None:
-        db_character.hp = 0
-    if db_character.max_hp is None:
-        db_character.max_hp = 0
-    if db_character.mana is None:
-        db_character.mana = 0
-    if db_character.max_mana is None:
-        db_character.max_mana = 0
+    # Personagem novo começa com vida e mana cheias.
+    db_character.max_hp = db_character.max_hp or 0
+    db_character.max_mana = db_character.max_mana or 0
+    db_character.hp = db_character.max_hp
+    db_character.mana = db_character.max_mana
     db.add(db_character)
     db.commit()
     db.refresh(db_character)
     return db_character
+
 
 def update_character(db: Session, character_id: int, character_update: CharacterUpdateByMaster):
     db_character = db.query(Character).filter(Character.id == character_id).first()
@@ -31,6 +33,7 @@ def update_character(db: Session, character_id: int, character_update: Character
         db.commit()
         db.refresh(db_character)
     return db_character
+
 
 def delete_character(db: Session, character_id: int):
     db_character = db.query(Character).filter(Character.id == character_id).first()

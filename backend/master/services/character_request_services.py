@@ -1,13 +1,16 @@
-from sqlalchemy.orm import Session
-from ..models.character_request_model import CharacterRequest
-from ..models.character_model import Character
-from ..models.attribute_model import Attribute
-from ..models.raca_bonus_model import RacaBonus
-from ..models.raca_model import Raca
-from ..models.classe_model import Classe
 from datetime import datetime, timedelta
-from typing import Dict
 
+from sqlalchemy.orm import Session
+
+from ..core.time import utcnow
+from ..models.character_model import Character
+from ..models.character_request_model import CharacterRequest
+from ..models.classe_model import Classe
+from ..models.raca_model import Raca
+from .character_attribute_service import initialize_character_attributes
+
+STARTING_FREE_POINTS = 10
+APPROVAL_ATTRIBUTES = ("hp", "vigor", "agility", "speed", "charisma", "intellect", "presence", "occultism")
 
 INVESTIGATION_MAP = {
     "basic": 0,
@@ -19,7 +22,7 @@ INVESTIGATION_MAP = {
 
 def expire_pending_requests(db: Session, now: datetime | None = None, ttl_days: int = 2) -> int:
     """Marca como rejeitadas as requisições pendentes mais antigas que `ttl_days`."""
-    now = now or datetime.utcnow()
+    now = now or utcnow()
     cutoff = now - timedelta(days=ttl_days)
 
     updated = (
@@ -33,7 +36,7 @@ def expire_pending_requests(db: Session, now: datetime | None = None, ttl_days: 
     return int(updated or 0)
 
 
-def create_character_request(db: Session, user_id: int, payload: Dict):
+def create_character_request(db: Session, user_id: int, payload: dict):
     # Aplica expiração antes de criar (mantém a fila limpa)
     expire_pending_requests(db)
 
@@ -58,23 +61,17 @@ def get_request_by_id(db: Session, request_id: int):
     return db.query(CharacterRequest).filter(CharacterRequest.id == request_id).first()
 
 
-def approve_request(db: Session, request_id: int, approval_data: Dict, master_user_id: int):
-    # Expira automaticamente pendências antigas antes de aprovar
+def approve_request(db: Session, request_id: int, approval_data: dict, master_user_id: int) -> Character | None:
+    """Cria o personagem a partir da solicitação pendente, tudo numa única transação."""
     expire_pending_requests(db)
 
     req = db.query(CharacterRequest).filter(CharacterRequest.id == request_id).first()
     if not req or req.status != "pending":
         return None
-
-    # ensure referenced race and class exist
-    raca = db.query(Raca).filter(Raca.id == req.raca_id).first()
-    if not raca:
-        return None
-    classe = db.query(Classe).filter(Classe.id == req.classe_id).first()
-    if not classe:
+    if not db.get(Raca, req.raca_id) or not db.get(Classe, req.classe_id):
         return None
 
-    # Create Character
+    hp = int(approval_data.get("hp", 1))
     character = Character(
         name=req.name,
         age=req.age,
@@ -85,36 +82,24 @@ def approve_request(db: Session, request_id: int, approval_data: Dict, master_us
         description=req.description,
         user_id=req.user_id,
         subclass=approval_data.get("subclass"),
-        free_points=10,
+        hp=hp,
+        max_hp=hp,
+        mana=0,
+        max_mana=0,
+        free_points=STARTING_FREE_POINTS,
         total_points_distributed=0,
     )
     db.add(character)
-    db.commit()
-    db.refresh(character)
+    db.flush()
 
-    # Initialize attributes using character_attribute_service
-    from ..services.character_attribute_service import initialize_character_attributes
-
-    base_attrs = {
-        "hp": approval_data.get("hp", 0),
-        "vigor": approval_data.get("vigor", 0),
-        "agility": approval_data.get("agility", 0),
-        "speed": approval_data.get("speed", 0),
-        "charisma": approval_data.get("charisma", 0),
-        "intellect": approval_data.get("intellect", 0),
-        "presence": approval_data.get("presence", 0),
-        "occultism": approval_data.get("occultism", 0),
-    }
-
-    investigation_raw = approval_data.get("investigation")
-    investigation_value = INVESTIGATION_MAP.get(investigation_raw, 0)
-
+    base_attrs = {name: approval_data.get(name, 0) for name in APPROVAL_ATTRIBUTES}
+    investigation_value = INVESTIGATION_MAP.get(approval_data.get("investigation"), 0)
     initialize_character_attributes(db, character.id, base_attrs, investigation_value, character.raca_id)
 
-    # finalize request
     req.status = "approved"
     req.approved_by = master_user_id
-    req.approved_at = datetime.utcnow()
+    req.approved_at = utcnow()
 
     db.commit()
+    db.refresh(character)
     return character

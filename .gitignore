@@ -1,84 +1,33 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
-
-# Local env files
-.env
-.env.*
-
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual environments
 .venv/
-venv/
-env/
-ENV/
-env.bak/
-venv.bak/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
 
-# IDE and editors
-pipeline-data/vscode/
-pipeline-data/swp
-pipeline-data/swo
-pipeline-data/~
-pipeline-data/sublime-project
-pipeline-data/sublime-workspace
+# Configuração local (segredos)
+.env
+.env.*
+!.env.example
 
-# Environment variables (sensitive)
-pipeline-data/env
-pipeline-data/env.local
-pipeline-data/env.*.local
+# Banco de dados local e uploads de usuários
+*.db
+*.db-journal
+*.sqlite3
+*.sqbpro
+backend/master/static/uploads/
 
-# Data files (can be regenerated)
-pipeline-data/data/raw/
-pipeline-data/data/processed/
-pipeline-data/data/*.csv
-pipeline-data/data/*.parquet
-
-# Docker volumes
-pipeline-data/postgres_data/
-
-# Logs
-pipeline-data/*.log
-logs/
-
-# uv lockfile (optional, can commit or not)
-# uv.lock
-
-# OS
+# Editores e SO
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
 
-pipeline-data/app/generator/*
-pipeline-data/data/*
-t
+# Logs
+*.log
+logs/

@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from .habilidades_schema import HabilidadeSummary
 
 
 class CharacterHabilidadeCreate(BaseModel):
@@ -11,8 +13,8 @@ class CharacterHabilidadeRead(BaseModel):
     id: int
     character_id: int
     habilidade_id: int
-    assigned_by: Optional[int] = None
-    created_at: Optional[datetime] = None
+    assigned_by: int | None = None
+    created_at: datetime | None = None
+    habilidade: HabilidadeSummary | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

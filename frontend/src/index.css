@@ -1,60 +1,131 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@theme {
+  --color-ink: rgb(var(--ink));
+
+  --color-surface: rgb(var(--surface));
+  --color-surface-raised: rgb(var(--surface-raised));
+  --color-surface-sunken: rgb(var(--surface-sunken));
+
+  --color-line: rgb(var(--line));
+  --color-line-strong: rgb(var(--line-strong));
+
+  --color-parchment: rgb(var(--text));
+  --color-parchment-muted: rgb(var(--text-muted));
+  --color-parchment-faint: rgb(var(--text-faint));
+
+  --color-gold: rgb(var(--gold));
+  --color-gold-bright: rgb(var(--gold-bright));
+  --color-gold-deep: rgb(var(--gold-deep));
+
+  --color-blood: rgb(var(--blood));
+  --color-arcane: rgb(var(--arcane));
+  --color-moss: rgb(var(--moss));
+  --color-amber: rgb(var(--amber));
+
+  --font-display: Cinzel, Georgia, serif;
+  --font-sans: Inter, system-ui, sans-serif;
+
+  --shadow-rune:
+    0 0 0 1px rgb(var(--gold) / 0.35), 0 8px 30px -12px rgb(0 0 0 / 0.8);
+  --shadow-glow: 0 0 24px -6px rgb(var(--gold) / 0.45);
+
+  --animate-fade-in: fade-in 180ms ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
-body {
-  background:
-    radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 28%),
-    radial-gradient(circle at 80% 10%, rgba(255, 122, 24, 0.12), transparent 24%),
-    linear-gradient(180deg, #040815 0%, #07111f 45%, #050a12 100%);
-  color: #e6eef5;
-  font-family: 'Segoe UI', 'Arial', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
-  color-scheme: dark;
+/* Bordas sem cor explícita usam a linha do tema (no Tailwind 4 o padrão é currentColor). */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: rgb(var(--line));
+  }
 }
 
-#root {
-  min-height: 100vh;
+@utility field-control {
+  @apply w-full rounded-md border border-line bg-surface-sunken px-3 py-2 text-sm text-parchment placeholder:text-parchment-faint
+      transition-colors focus:border-gold focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-60;
 }
 
-/* Cores customizadas */
+@utility eyebrow {
+  @apply text-[11px] font-semibold uppercase tracking-[0.25em] text-gold;
+}
+
+/*
+ * Tema "fantasia sombria". Valores em canais RGB para o Tailwind aplicar opacidade
+ * (ex.: bg-gold/20). O app é só escuro, então os tokens ficam em :root.
+ */
 :root {
-  --primary-orange: #ff8c00;
-  --primary-orange-dark: #ff7700;
-  --bg-dark: #071025;
-  --bg-dark-secondary: #0f1724;
-  --border-color: #24303a;
-  --text-primary: #E6EEF5;
-  --text-secondary: #9AA6B2;
+  color-scheme: dark;
+  --ink: 17 14 11;
+  --surface: 28 24 19;
+  --surface-raised: 37 31 25;
+  --surface-sunken: 22 18 14;
+  --line: 58 48 39;
+  --line-strong: 92 76 58;
+  --text: 242 233 220;
+  --text-muted: 194 181 163;
+  --text-faint: 150 136 118;
+  --gold: 212 162 76;
+  --gold-bright: 232 189 106;
+  --gold-deep: 150 108 42;
+  --blood: 214 84 70;
+  --arcane: 77 143 217;
+  --moss: 106 170 116;
+  --amber: 217 160 58;
+
+  /* Séries dos gráficos, validadas contra --surface (CVD e contraste). */
+  --series-players: #3987e5;
+  --series-enemies: #d95926;
 }
 
-/* Scrollbar customizada */
-::-webkit-scrollbar {
-  width: 8px;
+@layer base {
+  html {
+    background: rgb(var(--ink));
+  }
+
+  body {
+    @apply min-h-screen font-sans text-parchment antialiased;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgb(var(--gold) / 0.08), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgb(var(--blood) / 0.06), transparent 60%),
+      rgb(var(--ink));
+  }
+
+  h1, h2, h3 {
+    @apply font-display tracking-wide;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--gold-bright));
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: rgb(var(--gold) / 0.35);
+  }
+
+  * {
+    scrollbar-color: rgb(var(--line-strong)) transparent;
+  }
 }
 
-::-webkit-scrollbar-track {
-  background: #1a1a1a;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--primary-orange);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-orange-dark);
-}
-
-::selection {
-  background: rgba(56, 189, 248, 0.35);
-  color: #ffffff;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

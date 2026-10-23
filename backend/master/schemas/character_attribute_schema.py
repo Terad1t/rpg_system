@@ -1,5 +1,4 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CharacterAttributeRead(BaseModel):
@@ -10,21 +9,16 @@ class CharacterAttributeRead(BaseModel):
     buff_multiplier: float
     total_value: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DistributePointRequest(BaseModel):
     attribute_name: str
-    points_to_add: int = 1
-
-    class Config:
-        from_attributes = True
+    points_to_add: int = Field(1, ge=1, le=100)
 
 
 class DistributePointResponse(BaseModel):
     free_points: int
     attributes: list[CharacterAttributeRead]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

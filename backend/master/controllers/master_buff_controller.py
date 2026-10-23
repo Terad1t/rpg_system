@@ -1,130 +1,70 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 import json
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from ..database.connection import get_db
 from ..models.buff_debuff_model import BuffDebuff
-from ..models.user_model import User
-from ..utils.auth_dependencies import get_current_master, CurrentUser
+from ..schemas.buff_schema import JSON_FIELDS, BuffCreate, BuffRead, BuffUpdate
+from ..utils.auth_dependencies import CurrentUser, get_current_master
 
-router = APIRouter(prefix="/master/buffs", tags=["master-buffs"])
-
-
-@router.get("/")
-def list_buffs(db: Session = Depends(get_db), current_master: CurrentUser = Depends(get_current_master)):
-    items = db.query(BuffDebuff).order_by(BuffDebuff.id.asc()).all()
-    result = []
-    for it in items:
-        result.append({
-            "id": it.id,
-            "name": it.name,
-            "kind": it.kind,
-            "description": it.description,
-            "effects": json.loads(it.effects) if it.effects else None,
-            "duration_default_seconds": it.duration_default_seconds,
-            "multipliers": json.loads(it.multipliers) if it.multipliers else None,
-            "attributes_affected": json.loads(it.attributes_affected) if it.attributes_affected else None,
-            "stackable": bool(it.stackable),
-            "created_at": it.created_at.isoformat() if it.created_at else None,
-            "created_by": it.created_by,
-        })
-    return result
+router = APIRouter(prefix="/master/buffs", tags=["master-buffs"], dependencies=[Depends(get_current_master)])
 
 
-@router.post("/")
-def create_buff(payload: dict, db: Session = Depends(get_db), current_master: CurrentUser = Depends(get_current_master)):
-    if not payload.get("name"):
-        raise HTTPException(status_code=400, detail="Name is required")
-    name = str(payload.get("name")).strip()
-    kind = payload.get("kind") or "buff"
-    existing = db.query(BuffDebuff).filter(BuffDebuff.name == name).first()
-    if existing:
+def _to_columns(data: dict) -> dict:
+    """Converte os campos estruturados para o texto JSON guardado no banco."""
+    return {key: (json.dumps(value) if key in JSON_FIELDS and value is not None else value) for key, value in data.items()}
+
+
+def _get_or_404(db: Session, buff_id: int) -> BuffDebuff:
+    buff = db.get(BuffDebuff, buff_id)
+    if not buff:
+        raise HTTPException(status_code=404, detail="Not found")
+    return buff
+
+
+def _ensure_unique_name(db: Session, name: str, exclude_id: int | None = None) -> None:
+    query = db.query(BuffDebuff).filter(BuffDebuff.name == name)
+    if exclude_id is not None:
+        query = query.filter(BuffDebuff.id != exclude_id)
+    if query.first():
         raise HTTPException(status_code=400, detail="Buff/Debuff with this name already exists")
 
-    item = BuffDebuff(
-        name=name,
-        kind=kind,
-        description=payload.get("description"),
-        effects=json.dumps(payload.get("effects")) if payload.get("effects") is not None else None,
-        duration_default_seconds=payload.get("duration_default_seconds"),
-        multipliers=json.dumps(payload.get("multipliers")) if payload.get("multipliers") is not None else None,
-        attributes_affected=json.dumps(payload.get("attributes_affected")) if payload.get("attributes_affected") is not None else None,
-        stackable=bool(payload.get("stackable")),
-        created_by=getattr(current_master, "user_id", None),
-    )
-    try:
-        db.add(item)
-        db.commit()
-        db.refresh(item)
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
 
-    return {"ok": True, "id": item.id}
+@router.get("/", response_model=list[BuffRead])
+def list_buffs(db: Session = Depends(get_db)):
+    return db.query(BuffDebuff).order_by(BuffDebuff.id.asc()).all()
 
 
-@router.get("/{item_id}")
-def read_buff(item_id: int, db: Session = Depends(get_db), current_master: CurrentUser = Depends(get_current_master)):
-    it = db.query(BuffDebuff).filter(BuffDebuff.id == item_id).first()
-    if not it:
-        raise HTTPException(status_code=404, detail="Not found")
-    return {
-        "id": it.id,
-        "name": it.name,
-        "kind": it.kind,
-        "description": it.description,
-        "effects": json.loads(it.effects) if it.effects else None,
-        "duration_default_seconds": it.duration_default_seconds,
-        "multipliers": json.loads(it.multipliers) if it.multipliers else None,
-        "attributes_affected": json.loads(it.attributes_affected) if it.attributes_affected else None,
-        "stackable": bool(it.stackable),
-        "created_at": it.created_at.isoformat() if it.created_at else None,
-        "created_by": it.created_by,
-    }
+@router.post("/", status_code=status.HTTP_201_CREATED)
+def create_buff(payload: BuffCreate, db: Session = Depends(get_db), master: CurrentUser = Depends(get_current_master)):
+    _ensure_unique_name(db, payload.name)
+    buff = BuffDebuff(**_to_columns(payload.model_dump()), created_by=master.user_id)
+    db.add(buff)
+    db.commit()
+    return {"ok": True, "id": buff.id}
 
 
-@router.put("/{item_id}")
-def update_buff(item_id: int, payload: dict, db: Session = Depends(get_db), current_master: CurrentUser = Depends(get_current_master)):
-    it = db.query(BuffDebuff).filter(BuffDebuff.id == item_id).first()
-    if not it:
-        raise HTTPException(status_code=404, detail="Not found")
+@router.get("/{buff_id}", response_model=BuffRead)
+def read_buff(buff_id: int, db: Session = Depends(get_db)):
+    return _get_or_404(db, buff_id)
 
-    if payload.get("name"):
-        it.name = str(payload.get("name")).strip()
-    if payload.get("kind"):
-        it.kind = payload.get("kind")
-    if "description" in payload:
-        it.description = payload.get("description")
-    if "effects" in payload:
-        it.effects = json.dumps(payload.get("effects")) if payload.get("effects") is not None else None
-    if "duration_default_seconds" in payload:
-        it.duration_default_seconds = payload.get("duration_default_seconds")
-    if "multipliers" in payload:
-        it.multipliers = json.dumps(payload.get("multipliers")) if payload.get("multipliers") is not None else None
-    if "attributes_affected" in payload:
-        it.attributes_affected = json.dumps(payload.get("attributes_affected")) if payload.get("attributes_affected") is not None else None
-    if "stackable" in payload:
-        it.stackable = bool(payload.get("stackable"))
 
-    try:
-        db.add(it)
-        db.commit()
-        db.refresh(it)
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
+@router.put("/{buff_id}")
+def update_buff(buff_id: int, payload: BuffUpdate, db: Session = Depends(get_db)):
+    buff = _get_or_404(db, buff_id)
+    changes = payload.model_dump(exclude_unset=True)
+    if changes.get("name"):
+        changes["name"] = changes["name"].strip()
+        _ensure_unique_name(db, changes["name"], exclude_id=buff_id)
+    for key, value in _to_columns(changes).items():
+        setattr(buff, key, value)
+    db.commit()
     return {"ok": True}
 
 
-@router.delete("/{item_id}")
-def delete_buff(item_id: int, db: Session = Depends(get_db), current_master: CurrentUser = Depends(get_current_master)):
-    it = db.query(BuffDebuff).filter(BuffDebuff.id == item_id).first()
-    if not it:
-        raise HTTPException(status_code=404, detail="Not found")
-    try:
-        db.delete(it)
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+@router.delete("/{buff_id}")
+def delete_buff(buff_id: int, db: Session = Depends(get_db)):
+    db.delete(_get_or_404(db, buff_id))
+    db.commit()
     return {"ok": True}

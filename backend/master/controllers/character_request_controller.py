@@ -1,35 +1,37 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy import func, text
-from datetime import datetime, timedelta
+from datetime import timedelta
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from ..core.time import utcnow
 from ..database.connection import get_db
+from ..models.character_model import Character
+from ..models.character_request_model import CharacterRequest
+from ..models.classe_model import Classe
+from ..models.raca_model import Raca
+from ..models.user_model import User
 from ..schemas.character_request_schema import (
+    CharacterApproval,
     CharacterRequestCreate,
     CharacterRequestRead,
-    CharacterApproval,
 )
-from ..services.character_request_services import (
-    create_character_request,
-    get_requests,
-    get_request_by_id,
-    approve_request,
-    expire_pending_requests,
-)
-from ..models.character_request_model import CharacterRequest
-from ..models.character_model import Character
-from ..models.user_model import User
-from ..utils.auth_dependencies import get_current_player, get_current_master, get_current_user
+from ..schemas.character_schema import CharacterRead
 from ..schemas.update_schema import CharacterUpdateEvent
+from ..services.character_request_services import (
+    approve_request,
+    create_character_request,
+    expire_pending_requests,
+    get_requests,
+)
+from ..utils.auth_dependencies import get_current_master, get_current_player
 from ..utils.broadcast import broadcast_manager
 from ..utils.inventory_manager import inventory_manager
-from ..models.raca_model import Raca
-from ..models.classe_model import Classe
 
 router = APIRouter(prefix="/characters/requests", tags=["character-requests"])
 
 
-@router.post("/", response_model=CharacterRequestRead)
+@router.post("/", response_model=CharacterRequestRead, status_code=status.HTTP_201_CREATED)
 async def create_request(
     payload: CharacterRequestCreate,
     current_player=Depends(get_current_player),
@@ -49,7 +51,7 @@ async def create_request(
         raise HTTPException(status_code=404, detail="Class (classe) not found")
 
     # Limite: 3 solicitações por jogador a cada 24h
-    now = datetime.utcnow()
+    now = utcnow()
     since = now - timedelta(days=1)
     requests_last_24h = (
         db.query(func.count(CharacterRequest.id))
@@ -66,11 +68,7 @@ async def create_request(
 
     # Limite: 3 personagens ativos (tipo=player) por jogador
     active_characters = (
-        db.query(func.count(Character.id))
-        .filter(Character.user_id == user_id)
-        .filter(Character.tipo == "player")
-        .scalar()
-        or 0
+        db.query(func.count(Character.id)).filter(Character.user_id == user_id).filter(Character.tipo == "player").scalar() or 0
     )
     if active_characters >= 3:
         raise HTTPException(
@@ -117,11 +115,15 @@ def my_requests(current_player=Depends(get_current_player), db: Session = Depend
 
 # Master endpoints
 @router.get("/", response_model=list[CharacterRequestRead])
-def list_requests(status: str | None = None, db: Session = Depends(get_db), current_master = Depends(get_current_master)):
-    return get_requests(db, status=status)
+def list_requests(
+    status_filter: str | None = Query(None, alias="status"),
+    db: Session = Depends(get_db),
+    current_master=Depends(get_current_master),
+):
+    return get_requests(db, status=status_filter)
 
 
-@router.post("/{request_id}/approve")
+@router.post("/{request_id}/approve", response_model=CharacterRead)
 async def approve(
     request_id: int,
     approval: CharacterApproval,
@@ -138,8 +140,12 @@ async def approve(
     if character is None:
         raise HTTPException(status_code=404, detail="Request not found or invalid")
 
-    event = CharacterUpdateEvent(data={"action": "created", "character_id": character.id})
-    await broadcast_manager.broadcast(event)
+    await broadcast_manager.broadcast(CharacterUpdateEvent(data={"action": "created", "character_id": character.id}))
+    await inventory_manager.broadcast_to_user(
+        character.user_id,
+        "character_request_approved",
+        {"action": "created", "request_id": request_id, "character_id": character.id, "name": character.name},
+    )
     return character
 
 
@@ -159,7 +165,7 @@ async def reject(
 
     req.status = "rejected"
     req.approved_by = master_id
-    req.approved_at = datetime.utcnow()
+    req.approved_at = utcnow()
 
     db.commit()
     db.refresh(req)

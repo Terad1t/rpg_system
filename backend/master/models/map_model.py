@@ -1,7 +1,7 @@
-from sqlalchemy import Column, Integer, String, Text, Table, ForeignKey
+from sqlalchemy import Column, ForeignKey, Integer, String, Table, Text
 from sqlalchemy.orm import relationship
-from ..database.connection import Base
 
+from ..database.connection import Base
 
 maps_racas = Table(
     "maps_racas",

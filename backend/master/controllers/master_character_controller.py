@@ -1,17 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session, joinedload
+
+from ..core.time import utcnow
 from ..database.connection import get_db
 from ..models.character_model import Character
-from ..models.user_model import User
-from ..models.raca_model import Raca
-from ..models.classe_model import Classe
-from ...player.controllers.player_panel_controller import _serialize_character
-from ..utils.auth_dependencies import get_current_master, CurrentUser
-from ..utils.inventory_manager import inventory_manager
 from ..models.master_audit_model import MasterAudit
+from ..schemas.master_character_schema import CharacterQuickUpdate, CharacterVisibility
+from ..utils.auth_dependencies import CurrentUser, get_current_master
+from ..utils.inventory_manager import inventory_manager
 
 router = APIRouter(prefix="/master/characters", tags=["master-characters"])
 
@@ -36,7 +35,7 @@ def _add_timed_effect(raw_value, effect_name: str, duration_seconds: int | None)
     effects = _parse_effects(raw_value)
     payload = {"name": effect_name}
     if duration_seconds and duration_seconds > 0:
-        payload["expires_at"] = (datetime.utcnow() + timedelta(seconds=int(duration_seconds))).isoformat()
+        payload["expires_at"] = (utcnow() + timedelta(seconds=int(duration_seconds))).isoformat()
     effects.append(payload)
     return _dump_effects(effects)
 
@@ -49,16 +48,18 @@ def _remove_effect(raw_value, effect_name: str):
 
 def _character_summary(character: Character):
     owner = character.user
-    is_online = False
-    if owner:
-        try:
-            is_online = inventory_manager.get_user_subscribers_count(int(owner.id)) > 0
-        except Exception:
-            is_online = False
+    is_online = bool(owner) and inventory_manager.get_user_subscribers_count(int(owner.id)) > 0
 
     return {
         "id": character.id,
         "name": character.name,
+        "age": character.age,
+        "subclass": character.subclass,
+        "raca_id": character.raca_id,
+        "classe_id": character.classe_id,
+        "user_id": character.user_id,
+        "current_map_id": character.current_map_id,
+        "free_points": character.free_points or 0,
         "codename": character.codename,
         "description": character.description,
         "portrait": character.portrait,
@@ -102,26 +103,21 @@ def list_master_characters(db: Session = Depends(get_db), current_master: Curren
     characters = (
         db.query(Character)
         .options(
-            # eager load for the dashboard summary
+            joinedload(Character.user),
+            joinedload(Character.raca),
+            joinedload(Character.classe),
+            joinedload(Character.current_map),
         )
         .order_by(Character.id.asc())
         .all()
     )
-
-    # hydrate relationships lazily for summary building
-    summaries = []
-    for character in characters:
-        _ = character.user
-        _ = character.raca
-        _ = character.classe
-        _ = character.current_map
-        summaries.append(_character_summary(character))
-
-    return summaries
+    return [_character_summary(character) for character in characters]
 
 
 @router.get("/{character_id}/audit")
-def read_character_audit(character_id: int, limit: int = 50, db: Session = Depends(get_db), current_master: CurrentUser = Depends(get_current_master)):
+def read_character_audit(
+    character_id: int, limit: int = 50, db: Session = Depends(get_db), current_master: CurrentUser = Depends(get_current_master)
+):
     entries = (
         db.query(MasterAudit)
         .filter(MasterAudit.character_id == character_id)
@@ -143,99 +139,76 @@ def read_character_audit(character_id: int, limit: int = 50, db: Session = Depen
 
 
 @router.post("/{character_id}/visibility")
-async def set_character_visibility(character_id: int, visibility: dict, current_master: CurrentUser = Depends(get_current_master), db: Session = Depends(get_db)):
-    character = db.query(Character).filter(Character.id == character_id).first()
+async def set_character_visibility(
+    character_id: int,
+    visibility: CharacterVisibility,
+    _master: CurrentUser = Depends(get_current_master),
+    db: Session = Depends(get_db),
+):
+    character = db.get(Character, character_id)
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
 
-    try:
-        character.visibility = json.dumps(visibility)
-        db.add(character)
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+    data = visibility.model_dump()
+    character.visibility = json.dumps(data)
+    db.commit()
 
-    # Broadcast new visibility/state to subscribers
-    try:
-        data = {"action": "visibility_changed", "visibility": visibility}
-        # send to character view subscribers
-        await inventory_manager.broadcast_character_update(character_id, data)
-        # notify owner if exists
-        if character.user_id:
-            await inventory_manager.broadcast_to_user(character.user_id, "character_visibility_changed", {"character_id": character_id, "visibility": visibility})
-    except Exception:
-        pass
-
+    await inventory_manager.broadcast_character_update(character_id, {"action": "visibility_changed", "visibility": data})
+    if character.user_id:
+        await inventory_manager.broadcast_to_user(
+            character.user_id, "character_visibility_changed", {"character_id": character_id, "visibility": data}
+        )
     return {"ok": True}
 
 
+def _effects_value(value) -> str:
+    return value if isinstance(value, str) else json.dumps(value)
+
+
 @router.post("/{character_id}/apply")
-async def apply_character_quick_update(character_id: int, payload: dict, current_master: CurrentUser = Depends(get_current_master), db: Session = Depends(get_db)):
-    """Aplicações rápidas de estado: dano, cura, buffs, debuffs, alterações narrativas.
-    Payload exemplo: {"hp": -10} ou {"hp": 20, "buffs": ["shield"]}
+async def apply_character_quick_update(
+    character_id: int,
+    payload: CharacterQuickUpdate,
+    master: CurrentUser = Depends(get_current_master),
+    db: Session = Depends(get_db),
+):
+    """Dano/cura (variação de HP e mana), buffs, debuffs e notas narrativas.
+
+    Exemplo: {"hp": -10} ou {"hp": 20, "add_buff": "shield", "buff_duration_seconds": 60}.
+    O Master não define HP/mana absolutos por aqui; isso vem de buffs ou da luta.
     """
-    character = db.query(Character).filter(Character.id == character_id).first()
+    character = db.get(Character, character_id)
     if not character:
         raise HTTPException(status_code=404, detail="Character not found")
 
-    # Enforce policy: Masters are not allowed to set absolute HP/Mana values via this endpoint.
-    # Allow incremental changes (damage/healing) through 'hp' and 'mana' deltas.
-    forbidden_keys = {"set_hp", "set_mana"}
-    if any(k in payload for k in forbidden_keys):
-        raise HTTPException(status_code=403, detail="Masters are not allowed to set absolute HP or Mana. Use buffs/debuffs or fight actions instead.")
+    changes = payload.model_dump(exclude_none=True)
 
-    # Apply incremental hp/mana changes (delta values) if provided
-    if payload.get("hp") is not None:
-        current_hp = int(character.hp or 0)
-        character.hp = max(0, current_hp + int(payload.get("hp", 0)))
-    if payload.get("mana") is not None:
-        current_mana = int(character.mana or 0)
-        character.mana = max(0, current_mana + int(payload.get("mana", 0)))
-    if payload.get("set_hp") is not None:
-        character.hp = max(0, int(payload["set_hp"]))
-    if payload.get("set_mana") is not None:
-        character.mana = max(0, int(payload["set_mana"]))
-    if payload.get("buffs") is not None:
-        character.buffs = payload.get("buffs") if isinstance(payload.get("buffs"), str) else json.dumps(payload.get("buffs"))
-    if payload.get("debuffs") is not None:
-        character.debuffs = payload.get("debuffs") if isinstance(payload.get("debuffs"), str) else json.dumps(payload.get("debuffs"))
-    if payload.get("add_buff"):
-        character.buffs = _add_timed_effect(character.buffs, str(payload["add_buff"]), payload.get("buff_duration_seconds"))
-    if payload.get("remove_buff"):
-        character.buffs = _remove_effect(character.buffs, str(payload["remove_buff"]))
-    if payload.get("add_debuff"):
-        character.debuffs = _add_timed_effect(character.debuffs, str(payload["add_debuff"]), payload.get("debuff_duration_seconds"))
-    if payload.get("remove_debuff"):
-        character.debuffs = _remove_effect(character.debuffs, str(payload["remove_debuff"]))
+    if payload.hp is not None:
+        character.hp = max(0, int(character.hp or 0) + payload.hp)
+    if payload.mana is not None:
+        character.mana = max(0, int(character.mana or 0) + payload.mana)
+    if payload.buffs is not None:
+        character.buffs = _effects_value(payload.buffs)
+    if payload.debuffs is not None:
+        character.debuffs = _effects_value(payload.debuffs)
+    if payload.add_buff:
+        character.buffs = _add_timed_effect(character.buffs, payload.add_buff, payload.buff_duration_seconds)
+    if payload.remove_buff:
+        character.buffs = _remove_effect(character.buffs, payload.remove_buff)
+    if payload.add_debuff:
+        character.debuffs = _add_timed_effect(character.debuffs, payload.add_debuff, payload.debuff_duration_seconds)
+    if payload.remove_debuff:
+        character.debuffs = _remove_effect(character.debuffs, payload.remove_debuff)
 
-    try:
-        db.add(character)
-        db.commit()
-        db.refresh(character)
-    except Exception:
-        db.rollback()
+    db.add(MasterAudit(master_id=master.user_id, character_id=character_id, action="apply", payload=json.dumps(changes)))
+    db.commit()
+    db.refresh(character)
 
-    # Log master audit
-    try:
-        if current_master and getattr(current_master, 'user_id', None):
-            audit = MasterAudit(master_id=current_master.user_id, character_id=character_id, action='apply', payload=json.dumps(payload))
-            db.add(audit)
-            db.commit()
-    except Exception:
-        db.rollback()
-
-    # Broadcast to subscribers
-    try:
-        data = {
-            "action": "apply",
-            "payload": payload,
-            "character": _character_summary(character),
-        }
-        await inventory_manager.broadcast_character_update(character_id, data)
-        if character.user_id:
-            await inventory_manager.broadcast_to_user(character.user_id, "character_applied", {"character_id": character_id, "payload": payload})
-    except Exception:
-        pass
-
+    await inventory_manager.broadcast_character_update(
+        character_id, {"action": "apply", "payload": changes, "character": _character_summary(character)}
+    )
+    if character.user_id:
+        await inventory_manager.broadcast_to_user(
+            character.user_id, "character_applied", {"character_id": character_id, "payload": changes}
+        )
     return {"ok": True}

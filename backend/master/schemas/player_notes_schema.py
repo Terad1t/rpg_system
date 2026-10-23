@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PlayerNoteCreate(BaseModel):
@@ -10,9 +10,8 @@ class PlayerNoteCreate(BaseModel):
 class PlayerNoteRead(BaseModel):
     id: int
     user_id: int
-    content: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    content: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

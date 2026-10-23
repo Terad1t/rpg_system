@@ -1,24 +1,36 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from pathlib import Path
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.pool import StaticPool
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-DATABASE_PATH = REPO_ROOT / "rpg_system.db"
+from ..core.config import get_settings
 
-# URL do banco de dados (usando SQLite para simplicidade)
-DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
+DATABASE_URL = get_settings().database_url
 
-# Cria o engine
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+_is_sqlite = DATABASE_URL.startswith("sqlite")
+_is_memory = _is_sqlite and (DATABASE_URL in ("sqlite://", "sqlite:///:memory:"))
 
-# Cria a sessão
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False} if _is_sqlite else {},
+    pool_pre_ping=not _is_sqlite,
+    # Banco em memória (testes): uma única conexão compartilhada, senão cada sessão veria um banco vazio.
+    **({"poolclass": StaticPool} if _is_memory else {}),
+)
+
+if _is_sqlite:
+
+    @event.listens_for(engine, "connect")
+    def _enable_sqlite_foreign_keys(dbapi_connection, _record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base para os modelos
 Base = declarative_base()
 
-# Função para obter a sessão do banco
+
 def get_db():
     db = SessionLocal()
     try:
